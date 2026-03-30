@@ -1,0 +1,67 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "deverse-server",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-03-17",
+	"migrations": [
+		{
+			"new_sqlite_classes": [
+				"NPCDurableObject",
+				"ArenaRoomDurableObject"
+			],
+			"tag": "v1"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "NPCDurableObject",
+				"name": "NPC_DURABLE_OBJECT"
+			},
+			{
+				"class_name": "ArenaRoomDurableObject",
+				"name": "ARENA_ROOM"
+			}
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "deverse-db",
+			"database_id": "local-deverse-db"
+		}
+	],
+	"ai": {
+		"binding": "AI"
+	},
+	"vectorize": [
+		{
+			"binding": "VECTORIZE_INDEX",
+			"index_name": "npc-memory-index"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "WORLD_SNAPSHOTS",
+			"bucket_name": "world-snapshots"
+		}
+	],
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"ELEVENLABS_VOICE_ID": "21m00Tcm4TlvDq8ikWAM",
+		"SYSTEM_PROMPT": "You are a helpful AI developer NPC assisting a user in a 3D playground.",
+		"GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID",
+		"JWT_SECRET": "change-me-in-production",
+		"FRONTEND_URL": "http://localhost:5173"
+	}
+}

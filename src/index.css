@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #20249b;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #3a40b2;
+  --color-on-primary-container: #b8bbff;
+  --color-secondary: #585b87;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #c9cbfe;
+  --color-on-secondary-container: #525480;
+  --color-tertiary: #612600;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #853700;
+  --color-on-tertiary-container: #ffad83;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-background: #fbf8ff;
+  --color-on-background: #1b1b22;
+  --color-surface: #fbf8ff;
+  --color-on-surface: #1b1b22;
+  --color-surface-variant: #e4e1eb;
+  --color-on-surface-variant: #464653;
+  --color-outline: #767684;
+  --color-outline-variant: #c6c5d5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f2fc;
+  --color-surface-container: #efecf7;
+  --color-surface-container-high: #e9e7f1;
+  --color-surface-container-highest: #e4e1eb;
+  
+  --color-primary-fixed: #e0e0ff;
+  --color-on-primary-fixed: #01006e;
+  --color-tertiary-fixed: #ffdbcb;
+  --color-on-tertiary-fixed-variant: #783100;
+
+  --font-headline: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+
+  --radius-xl: 1.5rem;
+}
+
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+}
+
+@utility soul-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+}
+
+@utility hero-gradient {
+  background: linear-gradient(135deg, #20249b 0%, #3a40b2 100%);
+}
+
+@utility ghost-border {
+  border: 1px solid rgba(199, 196, 215, 0.2);
+}
+
+@utility soft-atrium-shadow {
+  box-shadow: 0px 20px 40px rgba(1, 0, 110, 0.05);
+}
+
+@utility glass-nav {
+  backdrop-filter: blur(24px);
+}
+
+@utility iso-card-container {
+  perspective: 1200px;
+}
+
+@utility iso-card {
+  transform: rotateX(15deg) rotateY(-15deg) rotateZ(5deg);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+  transform-style: preserve-3d;
+
+  &:hover {
+    transform: rotateX(10deg) rotateY(-10deg) rotateZ(2deg) translateY(-10px);
+  }
+}
+
+@utility iso-shadow {
+  box-shadow: 
+      20px 20px 40px rgba(0, 0, 0, 0.08),
+      10px 10px 20px rgba(0, 0, 0, 0.04),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+@utility glass-morphism {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility arena-grid {
+  background-image: 
+      linear-gradient(rgba(32, 36, 155, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(32, 36, 155, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
