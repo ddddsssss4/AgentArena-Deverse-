@@ -31,10 +31,10 @@ export async function signJwt(
   secret: string
 ): Promise<string> {
   const header = base64url(
-    new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" }))
+    new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })).buffer as ArrayBuffer
   );
   const body = base64url(
-    new TextEncoder().encode(JSON.stringify(payload))
+    new TextEncoder().encode(JSON.stringify(payload)).buffer as ArrayBuffer
   );
   const unsigned = `${header}.${body}`;
 
