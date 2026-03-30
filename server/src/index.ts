@@ -52,61 +52,42 @@ export default {
       return stub.fetch(new Request(npcUrl.toString(), request));
     }
 
-    // ── Auth: Google OAuth verification ───────────────────────────────────
+    // ── Auth: Google credential (ID token) verification ──────────────────
     if (path === "/api/auth/google" && request.method === "POST") {
       const body = await request.json() as { credential?: string };
       const { credential } = body;
 
       if (!credential) {
-        return Response.json(
-          { error: "Missing credential" },
-          { status: 400, headers: CORS }
-        );
+        return Response.json({ error: "Missing credential" }, { status: 400, headers: CORS });
       }
 
-      const googleUser = await verifyGoogleToken(
-        credential,
-        env.GOOGLE_CLIENT_ID
-      );
-
+      const googleUser = await verifyGoogleToken(credential, env.GOOGLE_CLIENT_ID);
       if (!googleUser) {
-        return Response.json(
-          { error: "Invalid Google token" },
-          { status: 401, headers: CORS }
-        );
+        return Response.json({ error: "Invalid Google token" }, { status: 401, headers: CORS });
       }
 
-      // Upsert user in D1
-      const user = await upsertUser(env.DB, {
+      return createAuthResponse(env, CORS, {
         googleId: googleUser.sub,
         email: googleUser.email,
         name: googleUser.name,
         avatarUrl: googleUser.picture,
       });
+    }
 
-      // Create session
-      const sessionId = await createSession(env.DB, user.id);
+    // ── Auth: Google userinfo (access_token flow) ──────────────────────────
+    if (path === "/api/auth/google/userinfo" && request.method === "POST") {
+      const body = await request.json() as { sub?: string; email?: string; name?: string; picture?: string };
 
-      // Sign a JWT containing the session ID
-      const token = await signJwt(
-        {
-          sub: user.id,
-          sessionId,
-          exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
-        },
-        env.JWT_SECRET
-      );
+      if (!body.sub || !body.email) {
+        return Response.json({ error: "Missing user info" }, { status: 400, headers: CORS });
+      }
 
-      const headers = new Headers({
-        ...CORS,
-        "Content-Type": "application/json",
-        "Set-Cookie": `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+      return createAuthResponse(env, CORS, {
+        googleId: body.sub,
+        email: body.email,
+        name: body.name || body.email,
+        avatarUrl: body.picture,
       });
-
-      return new Response(
-        JSON.stringify({ token, user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl, color: user.color } }),
-        { status: 200, headers }
-      );
     }
 
     // ── Auth: Get current user ─────────────────────────────────────────────
@@ -207,3 +188,42 @@ async function getAuthenticatedUser(request: Request, env: Env) {
 function generateRoomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
+
+async function createAuthResponse(
+  env: Env,
+  cors: Record<string, string>,
+  userData: { googleId: string; email: string; name: string; avatarUrl?: string }
+): Promise<Response> {
+  const user = await upsertUser(env.DB, userData);
+  const sessionId = await createSession(env.DB, user.id);
+
+  const token = await signJwt(
+    {
+      sub: user.id,
+      sessionId,
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+    },
+    env.JWT_SECRET
+  );
+
+  const headers = new Headers({
+    ...cors,
+    "Content-Type": "application/json",
+    "Set-Cookie": `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+  });
+
+  return new Response(
+    JSON.stringify({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        color: user.color,
+      },
+    }),
+    { status: 200, headers }
+  );
+}
+
