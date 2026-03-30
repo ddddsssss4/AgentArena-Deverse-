@@ -13,6 +13,7 @@ interface CharacterProps {
   isLocal?: boolean;
   isWaving?: boolean;
   isTalking?: boolean;
+  onProximityUpdate?: (position: THREE.Vector3) => void;
 }
 
 const SPEED = 5;
@@ -23,10 +24,11 @@ export const Character: React.FC<CharacterProps> = ({
   id,
   position = [0, 1, 0],
   rotation = [0, 0, 0],
-  color = "#3b82f6", // Default blue
+  color = "#3b82f6",
   isLocal = false,
   isWaving = false,
   isTalking = false,
+  onProximityUpdate,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const armRef = useRef<THREE.Mesh>(null);
@@ -80,6 +82,11 @@ export const Character: React.FC<CharacterProps> = ({
         [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
         [groupRef.current.rotation.x, groupRef.current.rotation.y, groupRef.current.rotation.z]
       );
+    }
+
+    // Report position for NPC proximity detection
+    if (onProximityUpdate) {
+      onProximityUpdate(groupRef.current.position.clone());
     }
 
     // Handle waving
