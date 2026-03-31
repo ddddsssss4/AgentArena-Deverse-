@@ -1,13 +1,14 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 
 export default function SideNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isArena = location.pathname === "/arena";
 
   const navLinks = [
     { name: "Dashboard", path: "/lobby", icon: "dashboard" },
     { name: "Global Explore", path: "/arena", icon: "public" },
-    { name: "My Arenas", path: "#", icon: "grid_view" },
+    { name: "My Arenas", path: "/my-arenas", icon: "grid_view" },
     { name: "Train Your NPC", path: "/train", icon: "model_training" },
     { name: "Compute", path: "#", icon: "memory" },
   ];
@@ -49,7 +50,10 @@ export default function SideNav() {
       </nav>
 
       <div className="mt-4 px-2">
-        <button className="w-full soul-gradient text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20">
+        <button 
+          onClick={() => navigate("/my-arenas")}
+          className="w-full soul-gradient text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
+        >
           <span className="material-symbols-outlined text-sm">add</span>
           New Arena
         </button>
