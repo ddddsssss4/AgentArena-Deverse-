@@ -35,73 +35,49 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
   const audioRef = useRef<AudioContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioBufferRef = useRef<ArrayBuffer[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
-  const finalTranscriptRef = useRef<string>("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  // Initialize Web Speech API
-  useEffect(() => {
-    // @ts-expect-error - SpeechRecognition is missing from standard types
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        finalTranscriptRef.current = "";
-        setIsListening(true);
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onresult = (event: any) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        // Store in ref (immune to stale closure) & show live preview in input
-        finalTranscriptRef.current = transcript;
-        setInput(transcript);
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-      };
-
-      // Auto-send when recording stops
-      recognition.onend = () => {
-        setIsListening(false);
-        const transcript = finalTranscriptRef.current.trim();
-        if (transcript && wsRef.current?.readyState === WebSocket.OPEN) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", content: transcript, timestamp: new Date() },
-          ]);
-          setInput("");
-          setStatus("thinking");
-          audioBufferRef.current = [];
-          wsRef.current.send(JSON.stringify({ type: "message", content: transcript }));
-          finalTranscriptRef.current = "";
-        }
-      };
-
-      recognitionRef.current = recognition;
-    }
-  }, []);
-
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert("Voice input is not supported in this browser (try Chrome/Safari).");
-      return;
-    }
+  const toggleListening = async () => {
     if (isListening) {
-      // Stopping will trigger onend which auto-sends
-      recognitionRef.current.stop();
+      mediaRecorderRef.current?.stop();
     } else {
-      setInput("");
-      recognitionRef.current.start();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstart = () => {
+          setIsListening(true);
+        };
+
+        mediaRecorder.onstop = () => {
+          setIsListening(false);
+          const tracks = stream.getTracks();
+          tracks.forEach((track) => track.stop()); // Stop mic usage
+
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          
+          if (wsRef.current?.readyState === WebSocket.OPEN && audioBlob.size > 0) {
+            setStatus("thinking");
+            audioBufferRef.current = [];
+            // Send binary blob directly!
+            wsRef.current.send(audioBlob);
+          }
+        };
+
+        mediaRecorder.start();
+      } catch (err) {
+        console.error("Microphone access error:", err);
+        alert("Could not access microphone.");
+      }
     }
   };
 
@@ -141,6 +117,17 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
       }
 
       switch (msg.type) {
+        case "transcribed_text": {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "user",
+              content: msg.content as string,
+              timestamp: new Date(),
+            },
+          ]);
+          break;
+        }
         case "text": {
           setMessages((prev) => [
             ...prev,

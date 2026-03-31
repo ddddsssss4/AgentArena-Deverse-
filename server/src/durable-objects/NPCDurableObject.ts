@@ -32,16 +32,39 @@ export class NPCDurableObject extends DurableObject<Env> {
     this.sessions.add(server);
 
     server.addEventListener("message", async (msg) => {
-      if (typeof msg.data !== "string") return;
-
       try {
-        const parsed = JSON.parse(msg.data) as { type: string; content?: string };
-        if (parsed.type !== "message" || !parsed.content) return;
+        let userMessage = "";
 
-        const userMessage = parsed.content;
+        if (msg.data instanceof ArrayBuffer) {
+          server.send(JSON.stringify({ type: "status", status: "thinking" })); // Actually transcribing, but thinking works for UI
+          
+          try {
+            // Whisper expects an array of numbers representing the binary audio
+            const audioArray = [...new Uint8Array(msg.data)];
+            const transcription = await this.env.AI.run(
+              "@cf/openai/whisper",
+              { audio: audioArray }
+            ) as { text: string };
+            
+            userMessage = transcription.text.trim();
+            
+            if (!userMessage) return; // Silent audio
 
-        // Acknowledge receipt
-        server.send(JSON.stringify({ type: "status", status: "thinking" }));
+            // Echo the transcribed text back so the user sees what they said
+            server.send(JSON.stringify({ type: "transcribed_text", content: userMessage }));
+          } catch (err) {
+            console.error("Whisper error:", err);
+            server.send(JSON.stringify({ type: "error", error: "Speech-to-text failed." }));
+            return;
+          }
+        } else if (typeof msg.data === "string") {
+          const parsed = JSON.parse(msg.data) as { type: string; content?: string };
+          if (parsed.type !== "message" || !parsed.content) return;
+          userMessage = parsed.content;
+          server.send(JSON.stringify({ type: "status", status: "thinking" }));
+        } else {
+          return;
+        }
 
         // ── 1. Memory retrieval (Vectorize) ──────────────────────────────
         const queryEmbedding = await this.env.AI.run(
@@ -110,7 +133,7 @@ export class NPCDurableObject extends DurableObject<Env> {
               },
               body: JSON.stringify({
                 text: responseText,
-                model_id: "eleven_monolingual_v1",
+                model_id: "eleven_flash_v2_5",
                 voice_settings: { stability: 0.5, similarity_boost: 0.75 },
               }),
             }
