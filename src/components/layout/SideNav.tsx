@@ -8,6 +8,7 @@ export default function SideNav() {
     { name: "Dashboard", path: "/lobby", icon: "dashboard" },
     { name: "Global Explore", path: "/arena", icon: "public" },
     { name: "My Arenas", path: "#", icon: "grid_view" },
+    { name: "Train Your NPC", path: "/train", icon: "model_training" },
     { name: "Compute", path: "#", icon: "memory" },
   ];
 

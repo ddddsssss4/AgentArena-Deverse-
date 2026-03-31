@@ -7,6 +7,7 @@ import Profile from "./pages/Profile";
 import Arena from "./pages/Arena";
 import ArenaStage from "./pages/ArenaStage";
 import ChatHistory from "./pages/ChatHistory";
+import TrainNPC from "./pages/TrainNPC";
 import { useAuthStore } from "./store/authStore";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="arena" element={<Arena />} />
           <Route path="arena/live" element={<ArenaStage />} />
           <Route path="history" element={<ChatHistory />} />
+          <Route path="train" element={<TrainNPC />} />
         </Route>
         <Route path="*" element={<Navigate to="/lobby" replace />} />
       </Routes>
