@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { getNpcById } from "../config/npcs";
-import { saveChatTurn } from "../lib/db";
+import { saveChatTurn, getUserNpcSettings } from "../lib/db";
 
 /**
  * NPCDurableObject — One instance per NPC (keyed by npcId).
@@ -91,7 +91,19 @@ export class NPCDurableObject extends DurableObject<Env> {
           }
         }
 
-        // ── 1. Memory retrieval (Vectorize) ──────────────────────────────
+        // ── 0. Load user overrides ───────────────────────────────────────
+        let activeSystemPrompt = npcConfig.systemPrompt;
+        let activeVoiceId: string = npcConfig.voiceId;
+        
+        if (userId !== "anonymous") {
+          const settings = await getUserNpcSettings(this.env.DB, userId, npcId);
+          if (settings) {
+            if (settings.roleOverride) activeSystemPrompt += `\nRole context: ${settings.roleOverride}`;
+            if (settings.voiceId) activeVoiceId = settings.voiceId;
+          }
+        }
+
+        // ── 1. Memory retrieval (Vectorize with userId filtering) ────────
         const queryEmbedding = await this.env.AI.run(
           "@cf/baai/bge-base-en-v1.5",
           { text: [userMessage] }
@@ -99,27 +111,35 @@ export class NPCDurableObject extends DurableObject<Env> {
 
         const vector = queryEmbedding.data[0];
 
+        // Filter by userId if authenticated, else just npcId
+        const filterStr = userId !== "anonymous" 
+          ? { npcId, userId } 
+          : { npcId };
+
         const memoryQuery = await this.env.VECTORIZE_INDEX.query(vector, {
           topK: 3,
           returnMetadata: "all",
-          filter: { npcId },
+          filter: filterStr as any,
         });
 
         // ── 2. Build prompt with memories ────────────────────────────────
         const promptMessages: Array<{ role: string; content: string }> = [
-          { role: "system", content: npcConfig.systemPrompt },
+          { role: "system", content: activeSystemPrompt },
         ];
 
         if (memoryQuery.matches && memoryQuery.matches.length > 0) {
           const memoryTexts = memoryQuery.matches
             .filter((m) => m.metadata?.text)
-            .map((m) => m.metadata!.text as string)
+            .map((m) => {
+              const prefix = m.metadata?.type === "user_knowledge" ? "[User Provided Fact]" : "[Past Conversation]";
+              return `${prefix} ${m.metadata!.text as string}`;
+            })
             .join("\n---\n");
 
           if (memoryTexts.length > 0) {
             promptMessages.push({
               role: "system",
-              content: `Past conversation context:\n${memoryTexts}`,
+              content: `Relevant context:\n${memoryTexts}`,
             });
           }
         }
@@ -149,7 +169,7 @@ export class NPCDurableObject extends DurableObject<Env> {
           server.send(JSON.stringify({ type: "status", status: "speaking" }));
 
           const ttsRes = await fetch(
-            `https://api.elevenlabs.io/v1/text-to-speech/${npcConfig.voiceId}/stream`,
+            `https://api.elevenlabs.io/v1/text-to-speech/${activeVoiceId}/stream`,
             {
               method: "POST",
               headers: {
@@ -205,9 +225,11 @@ export class NPCDurableObject extends DurableObject<Env> {
         }
 
         // ── 6. Summarize + Vectorize memory (background) ─────────────────
-        this.ctx.waitUntil(
-          this.saveMemory(npcId, userMessage, responseText, vector)
-        );
+        if (userId !== "anonymous") {
+          this.ctx.waitUntil(
+            this.saveMemory(npcId, userId, userMessage, responseText, vector)
+          );
+        }
 
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -224,6 +246,7 @@ export class NPCDurableObject extends DurableObject<Env> {
 
   private async saveMemory(
     npcId: string,
+    userId: string,
     userMessage: string,
     responseText: string,
     messageVector: number[]
@@ -240,12 +263,12 @@ export class NPCDurableObject extends DurableObject<Env> {
 
       const summaryText = summary.summary || `${userMessage} → ${responseText.slice(0, 100)}`;
 
-      // Store in Vectorize with npcId filter
+      // Store in Vectorize with userId and npcId filter
       await this.env.VECTORIZE_INDEX.insert([
         {
           id: crypto.randomUUID(),
           values: messageVector,
-          metadata: { text: summaryText, npcId },
+          metadata: { text: summaryText, npcId, userId, type: "conversation" },
         },
       ]);
     } catch {

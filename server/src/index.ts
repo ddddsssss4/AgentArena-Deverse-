@@ -14,6 +14,10 @@ import {
   deleteSession,
   getChatHistory,
   getUserById,
+  upsertUserNpcSettings,
+  addNpcKnowledge,
+  getNpcKnowledge,
+  getUserNpcSettings,
 } from "./lib/db";
 import { NPCS } from "./config/npcs";
 
@@ -148,6 +152,56 @@ export default {
       }
       const code = generateRoomCode();
       return Response.json({ code }, { status: 200, headers: CORS });
+    }
+
+    // ── NPC Training ──────────────────────────────────────────────────────────
+    if (path.startsWith("/api/npc/") && path.endsWith("/train") && request.method === "POST") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+      const npcId = path.split("/")[3];
+
+      const body = await request.json() as { text?: string; voiceId?: string; roleOverride?: string };
+      const { text, voiceId, roleOverride } = body;
+
+      // Upsert settings if provided
+      if (voiceId || roleOverride) {
+        await upsertUserNpcSettings(env.DB, { userId: user.id, npcId, voiceId, roleOverride });
+      }
+
+      // Add knowledge if provided
+      if (text) {
+        // Generate embedding
+        const req = await env.AI.run("@cf/baai/bge-base-en-v1.5", {
+          text: [text],
+        });
+        // @ts-ignore
+        const embedding = req.data[0];
+
+        // Upsert to Vectorize
+        await env.VECTORIZE_INDEX.upsert([
+          {
+            id: crypto.randomUUID(),
+            values: embedding,
+            metadata: { npcId, userId: user.id, text, type: "user_knowledge" },
+          },
+        ]);
+
+        // Save raw text to D1
+        await addNpcKnowledge(env.DB, { userId: user.id, npcId, content: text });
+      }
+
+      return Response.json({ success: true }, { status: 200, headers: CORS });
+    }
+
+    if (path.startsWith("/api/npc/") && path.endsWith("/knowledge") && request.method === "GET") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+      const npcId = path.split("/")[3];
+
+      const knowledge = await getNpcKnowledge(env.DB, user.id, npcId);
+      const settings = await getUserNpcSettings(env.DB, user.id, npcId);
+
+      return Response.json({ knowledge, settings: settings || {} }, { status: 200, headers: CORS });
     }
 
     // ── Arena: Validate join code (any code is valid — DO handles isolation) ─

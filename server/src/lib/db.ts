@@ -1,10 +1,10 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc } from "drizzle-orm";
-import { users, sessions, chatTurns } from "../db/schema";
-import type { User } from "../db/schema";
+import { users, sessions, chatTurns, npcKnowledge, userNpcSettings } from "../db/schema";
+import type { User, UserNpcSetting, NpcKnowledge } from "../db/schema";
 
 export function getDb(d1: D1Database) {
-  return drizzle(d1, { schema: { users, sessions, chatTurns } });
+  return drizzle(d1, { schema: { users, sessions, chatTurns, npcKnowledge, userNpcSettings } });
 }
 
 // ─── User helpers ───────────────────────────────────────────────────────────
@@ -153,6 +153,78 @@ export async function getChatHistory(
     .where(and(...conditions))
     .orderBy(desc(chatTurns.createdAt))
     .limit(limit);
+}
+
+// ─── NPC Knowledge & Settings ──────────────────────────────────────────────────
+
+export async function upsertUserNpcSettings(
+  d1: D1Database,
+  data: { userId: string; npcId: string; voiceId?: string; roleOverride?: string }
+): Promise<void> {
+  const db = getDb(d1);
+  const existing = await db
+    .select()
+    .from(userNpcSettings)
+    .where(and(eq(userNpcSettings.userId, data.userId), eq(userNpcSettings.npcId, data.npcId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(userNpcSettings)
+      .set({
+        voiceId: data.voiceId ?? existing[0].voiceId,
+        roleOverride: data.roleOverride ?? existing[0].roleOverride,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(userNpcSettings.userId, data.userId), eq(userNpcSettings.npcId, data.npcId)));
+  } else {
+    await db.insert(userNpcSettings).values({
+      userId: data.userId,
+      npcId: data.npcId,
+      voiceId: data.voiceId,
+      roleOverride: data.roleOverride,
+    });
+  }
+}
+
+export async function getUserNpcSettings(
+  d1: D1Database,
+  userId: string,
+  npcId: string
+): Promise<UserNpcSetting | null> {
+  const db = getDb(d1);
+  const result = await db
+    .select()
+    .from(userNpcSettings)
+    .where(and(eq(userNpcSettings.userId, userId), eq(userNpcSettings.npcId, npcId)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function addNpcKnowledge(
+  d1: D1Database,
+  data: { userId: string; npcId: string; content: string }
+): Promise<void> {
+  const db = getDb(d1);
+  await db.insert(npcKnowledge).values({
+    id: crypto.randomUUID(),
+    userId: data.userId,
+    npcId: data.npcId,
+    content: data.content,
+  });
+}
+
+export async function getNpcKnowledge(
+  d1: D1Database,
+  userId: string,
+  npcId: string
+): Promise<NpcKnowledge[]> {
+  const db = getDb(d1);
+  return db
+    .select()
+    .from(npcKnowledge)
+    .where(and(eq(npcKnowledge.userId, userId), eq(npcKnowledge.npcId, npcId)))
+    .orderBy(desc(npcKnowledge.createdAt));
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

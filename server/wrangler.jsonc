@@ -28,7 +28,8 @@
 		{
 			"binding": "DB",
 			"database_name": "deverse-db",
-			"database_id": "local-deverse-db"
+			"database_id": "local-deverse-db",
+			"migrations_dir": "drizzle"
 		}
 	],
 	"ai": {

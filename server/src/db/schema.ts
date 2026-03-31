@@ -36,6 +36,32 @@ export const chatTurns = sqliteTable("chat_turns", {
     .notNull(),
 });
 
+export const npcKnowledge = sqliteTable("npc_knowledge", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  npcId: text("npc_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const userNpcSettings = sqliteTable("user_npc_settings", {
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  npcId: text("npc_id").notNull(),
+  voiceId: text("voice_id"),
+  roleOverride: text("role_override"),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type ChatTurn = typeof chatTurns.$inferSelect;
+export type NpcKnowledge = typeof npcKnowledge.$inferSelect;
+export type UserNpcSetting = typeof userNpcSettings.$inferSelect;
