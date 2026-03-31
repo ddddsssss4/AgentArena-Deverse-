@@ -6,12 +6,25 @@ import { enableVoice, disableVoice } from "../../lib/webrtc";
 interface RoomChatProps {
   selfName: string;
   selfColor: string;
+  isNearbyPlayer: boolean;
+  isNpcChatActive: boolean;
 }
 
-export function RoomChat({ selfName, selfColor }: RoomChatProps) {
-  const [open, setOpen] = useState(true);
+export function RoomChat({ selfName, selfColor, isNearbyPlayer, isNpcChatActive }: RoomChatProps) {
+  const [open, setOpen] = useState(false); // Default to closed (proximity-managed)
   const [input, setInput] = useState("");
   const [voiceOn, setVoiceOn] = useState(false);
+
+  // Proximity-based Auto-toggle
+  useEffect(() => {
+    if (isNpcChatActive) {
+      setOpen(false);
+    } else if (isNearbyPlayer) {
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  }, [isNearbyPlayer, isNpcChatActive]);
   const { messages, addMessage } = useChatStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 

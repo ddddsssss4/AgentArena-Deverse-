@@ -3,6 +3,10 @@
 	"name": "deverse-server",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-03-17",
+	"assets": {
+		"directory": "../dist",
+		"binding": "ASSETS"
+	},
 	"migrations": [
 		{
 			"new_sqlite_classes": [
@@ -28,7 +32,7 @@
 		{
 			"binding": "DB",
 			"database_name": "deverse-db",
-			"database_id": "local-deverse-db",
+			"database_id": "210734c5-20f7-40c2-bad6-3d333622f441",
 			"migrations_dir": "drizzle"
 		}
 	],
@@ -61,6 +65,6 @@
 		"SYSTEM_PROMPT": "You are a helpful AI developer NPC assisting a user in a 3D playground.",
 		"GOOGLE_CLIENT_ID": "826228158551-8vghpn3ibpelq7hlds19vbejvblfa91v.apps.googleusercontent.com",
 		"JWT_SECRET": "change-me-in-production",
-		"FRONTEND_URL": "http://localhost:5173"
+		"FRONTEND_URL": "https://deverse-server.saraswatdevesh98.workers.dev"
 	}
 }

@@ -219,7 +219,17 @@ export default {
       return Response.json({ status: "ok", version: "1.0.0" }, { headers: CORS });
     }
 
-    return new Response("Deverse Edge API v1", { status: 200, headers: CORS });
+    // Fallback for missing APIs
+    if (path.startsWith("/api/")) {
+       return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+
+    // Serve SPA index.html for all other routes so React Router handles it
+    try {
+      return await env.ASSETS.fetch(new Request(new URL("/index.html", request.url).toString(), request));
+    } catch (e) {
+      return new Response("Deverse Edge API v1 - Assets Not Available", { status: 200, headers: CORS });
+    }
   },
 } satisfies ExportedHandler<Env>;
 

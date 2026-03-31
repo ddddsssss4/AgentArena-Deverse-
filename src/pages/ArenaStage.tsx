@@ -114,7 +114,8 @@ export default function ArenaStage() {
 
   const { players } = useArenaStore();
   const [isConnected, setIsConnected] = useState(false);
-  const [activeNpcChat, setActiveNpcChat] = useState<typeof NPC_CONFIGS[number] | null>(null);
+  const [nearbyPlayer, setNearbyPlayer] = useState(false);
+  const [activeNpcChat, setActiveNpcChat] = useState<{ id: string; name: string; role: string; color: string } | null>(null);
   const [nearbyNpc, setNearbyNpc] = useState<string | null>(null);
 
   // Re-run WebRTC connections whenever a new player arrives/leaves
@@ -152,15 +153,25 @@ export default function ArenaStage() {
   }, [nearbyNpc, activeNpcChat]);
 
   const handlePlayerProximity = useCallback((playerPos: THREE.Vector3) => {
-    if (isPrivateRoom) return; // No NPCs in private rooms
+    // 1. NPC Proximity
+    const showNpcs = !isPrivateRoom || searchParams.get("npcs") === "true";
+    let foundNpc = null;
+    if (showNpcs) {
+      foundNpc = NPC_CONFIGS.find((npc) => {
+        const npcPos = new THREE.Vector3(...npc.position);
+        return playerPos.distanceTo(npcPos) < NPC_PROXIMITY_RADIUS;
+      });
+    }
+    setNearbyNpc(foundNpc?.id ?? null);
 
-    const nearby = NPC_CONFIGS.find((npc) => {
-      const npcPos = new THREE.Vector3(...npc.position);
-      return playerPos.distanceTo(npcPos) < NPC_PROXIMITY_RADIUS;
+    // 2. Human Player Proximity
+    const otherPlayers = useArenaStore.getState().players;
+    const isPlayerNearby = Object.values(otherPlayers).some((p) => {
+      const pPos = new THREE.Vector3(...p.position);
+      return playerPos.distanceTo(pPos) < NPC_PROXIMITY_RADIUS; // Same radius for humans
     });
-
-    setNearbyNpc(nearby?.id ?? null);
-  }, [isPrivateRoom]);
+    setNearbyPlayer(isPlayerNearby);
+  }, [isPrivateRoom, searchParams]);
 
   return (
     <div className="w-full h-[calc(100vh-theme(spacing.24))] rounded-[2.5rem] overflow-hidden relative bg-slate-50 border border-outline-variant/20 soft-atrium-shadow">
@@ -209,7 +220,12 @@ export default function ArenaStage() {
 
       {/* Private Room Chat Overlay */}
       {isPrivateRoom && user && (
-        <RoomChat selfName={user.name} selfColor={user.color} />
+        <RoomChat 
+          selfName={user.name} 
+          selfColor={user.color} 
+          isNearbyPlayer={nearbyPlayer}
+          isNpcChatActive={!!activeNpcChat}
+        />
       )}
 
       {/* 3D Canvas */}

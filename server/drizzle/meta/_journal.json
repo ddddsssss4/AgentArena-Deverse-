@@ -8,6 +8,13 @@
       "when": 1774898466145,
       "tag": "0000_friendly_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774956729561,
+      "tag": "0001_messy_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

@@ -1,69 +1,57 @@
 import { Link, useLocation } from "react-router-dom";
-import { cn } from "../../lib/utils";
+import { useAuthStore } from "../../store/authStore";
 
 export default function TopNav() {
   const location = useLocation();
+  const { user } = useAuthStore();
 
   const navLinks = [
-    { name: "Lobby", path: "/lobby" },
-    { name: "Arenas", path: "/arena" },
-    { name: "Collaborators", path: "#" },
-    { name: "Models", path: "#" },
-    { name: "Docs", path: "#" },
+    { name: "Dashboard", path: "/lobby" },
+    { name: "Global Arena", path: "/arena" },
+    { name: "Private Arenas", path: "/my-arenas" },
+    { name: "Train Agents", path: "/train" },
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-surface/95 backdrop-blur-3xl border-b border-outline-variant/10">
-      <div className="flex items-center gap-12">
-        <span className="text-2xl font-black tracking-tight text-on-surface font-headline">
-          DevStudio AI
-        </span>
+    <nav className="fixed top-0 w-full z-50 bg-[#faf9fa]/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.04)] border-b border-outline-variant/5">
+      <div className="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+        <div className="text-2xl font-bold tracking-tighter text-[#595e6b] dark:text-white font-['Space_Grotesk'] font-headline">
+          Deverse OS
+        </div>
+        
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
-            const isActive = location.pathname.startsWith(link.path);
+            const isActive = location.pathname.startsWith(link.path) && link.path !== "/" || (location.pathname === "/" && link.path === "/lobby");
             return (
               <Link
                 key={link.name}
                 to={link.path}
-                className={cn(
-                  "font-headline tracking-tight font-bold text-lg transition-transform hover:scale-105",
-                  isActive
-                    ? "text-primary border-b-2 border-primary pb-1"
-                    : "text-on-surface-variant hover:text-primary"
-                )}
+                className={`font-['Space_Grotesk'] font-headline text-sm tracking-tight transition-colors ${
+                  isActive 
+                    ? "text-[#595e6b] dark:text-white font-bold border-b-2 border-[#595e6b] pb-1" 
+                    : "text-[#4e6169] dark:text-[#a0a0a0] hover:text-[#595e6b] dark:hover:text-white"
+                }`}
               >
                 {link.name}
               </Link>
             );
           })}
         </div>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="hidden lg:flex items-center bg-surface-container-low rounded-full px-4 py-1.5 gap-2 border border-outline-variant/10">
-          <span className="material-symbols-outlined text-on-surface-variant text-sm">search</span>
-          <input
-            type="text"
-            placeholder="Quick search..."
-            className="bg-transparent border-none focus:ring-0 text-sm w-48 font-label outline-none"
-          />
+        
+        <div className="flex items-center gap-4">
+          {!user ? (
+            <Link to="/login" className="px-5 py-2 rounded-full border border-outline-variant/30 text-sm font-medium hover:bg-surface-container transition-all text-on-surface">
+              Login
+            </Link>
+          ) : (
+            <Link to="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline-variant/30 hover:bg-surface-container transition-all">
+              <div className="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-[10px]">
+                {user.email?.[0].toUpperCase() || "U"}
+              </div>
+              <span className="text-sm font-semibold max-w-[100px] truncate">{user.email?.split("@")[0]}</span>
+            </Link>
+          )}
         </div>
-        <button className="text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button className="text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">settings</span>
-        </button>
-        <Link to="/profile" className="h-10 w-10 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary-container">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBu7w7RuwoVk_l4zwSuU6oRf33z9hiFzs7r1uQY328ROPkKRJuWv2qjRpDvlHVWTEtZFebuGi-shCwuxySYJVJAiCFikGJRoqbwnBzYyM8qm93GIKOFmnyRDeCm5u1EVLmUpWAYdmQLiwEmwYMpDDBneO69dcOVm3NhpLaExtbxU8hH0ii5_vJ4X_EesVnUS8isdesMV-6NlmIzOLV0LFohhPTxFT5dJfe4F8Xz7G0pDNws1outyhSR5mYtxDIJ2HLgvrcbCQXUYgZt"
-            alt="User profile"
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        </Link>
-        <button className="soul-gradient text-white px-5 py-2 rounded-lg font-semibold text-sm hover:opacity-90 active:scale-95 transition-all">
-          Deploy
-        </button>
       </div>
     </nav>
   );
