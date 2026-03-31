@@ -15,6 +15,8 @@ type IncomingMessage =
   | { type: "move"; position: [number, number, number]; rotation: [number, number, number] }
   | { type: "wave"; isWaving: boolean }
   | { type: "talk"; isTalking: boolean }
+  | { type: "chat"; content: string }
+  | { type: "webrtc-signal"; to: string; signal: unknown }
   | { type: "ping" };
 
 /**
@@ -126,6 +128,37 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
           JSON.stringify({ type: "playerTalked", id: player.id, isTalking: msg.isTalking }),
           ws
         );
+        break;
+      }
+
+      case "chat": {
+        this.broadcast(
+          JSON.stringify({
+            type: "chatMessage",
+            from: player.name,
+            color: player.color,
+            content: msg.content,
+            timestamp: Date.now(),
+          }),
+          ws
+        );
+        break;
+      }
+
+      case "webrtc-signal": {
+        // Route the SDP offer/answer/ICE candidate directly to the target peer
+        const targetWs = [...this.sessions.entries()].find(
+          ([, p]) => p.id === msg.to
+        )?.[0];
+        if (targetWs) {
+          targetWs.send(
+            JSON.stringify({
+              type: "webrtc-signal",
+              from: player.id,
+              signal: msg.signal,
+            })
+          );
+        }
         break;
       }
 
