@@ -35,34 +35,46 @@ export class NPCDurableObject extends DurableObject<Env> {
       try {
         let userMessage = "";
 
+        console.log(`[WS] Message received. Type: ${typeof msg.data}, isArrayBuffer: ${msg.data instanceof ArrayBuffer}`);
+
         if (msg.data instanceof ArrayBuffer) {
-          server.send(JSON.stringify({ type: "status", status: "thinking" })); // Actually transcribing, but thinking works for UI
+          const byteSize = msg.data.byteLength;
+          console.log(`[Whisper] Received binary audio frame: ${byteSize} bytes. Sending to Whisper...`);
+          server.send(JSON.stringify({ type: "status", status: "thinking" }));
           
           try {
-            // Whisper expects an array of numbers representing the binary audio
             const audioArray = [...new Uint8Array(msg.data)];
+            console.log(`[Whisper] Audio array length: ${audioArray.length}. Calling AI...`);
+            
             const transcription = await this.env.AI.run(
               "@cf/openai/whisper",
               { audio: audioArray }
             ) as { text: string };
             
+            console.log(`[Whisper] Transcription result: "${transcription.text}"`);
             userMessage = transcription.text.trim();
             
-            if (!userMessage) return; // Silent audio
+            if (!userMessage) {
+              console.warn("[Whisper] Empty transcription, likely silent audio.");
+              server.send(JSON.stringify({ type: "status", status: "ready" }));
+              return;
+            }
 
             // Echo the transcribed text back so the user sees what they said
             server.send(JSON.stringify({ type: "transcribed_text", content: userMessage }));
           } catch (err) {
-            console.error("Whisper error:", err);
+            console.error("[Whisper] Transcription error:", err);
             server.send(JSON.stringify({ type: "error", error: "Speech-to-text failed." }));
             return;
           }
         } else if (typeof msg.data === "string") {
+          console.log(`[WS] Text message: ${msg.data.slice(0, 100)}`);
           const parsed = JSON.parse(msg.data) as { type: string; content?: string };
           if (parsed.type !== "message" || !parsed.content) return;
           userMessage = parsed.content;
           server.send(JSON.stringify({ type: "status", status: "thinking" }));
         } else {
+          console.warn("[WS] Unrecognized message type, ignoring.");
           return;
         }
 

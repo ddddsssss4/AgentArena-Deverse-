@@ -40,9 +40,11 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
   const toggleListening = async () => {
     if (isListening) {
+      console.log("[Mic] Stopping recording...");
       mediaRecorderRef.current?.stop();
     } else {
       try {
+        console.log("[Mic] Requesting microphone access...");
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
         mediaRecorderRef.current = mediaRecorder;
@@ -50,32 +52,39 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
+            console.log(`[Mic] Got audio chunk: ${e.data.size} bytes`);
             audioChunksRef.current.push(e.data);
           }
         };
 
         mediaRecorder.onstart = () => {
+          console.log("[Mic] Recording started.");
           setIsListening(true);
         };
 
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           setIsListening(false);
           const tracks = stream.getTracks();
-          tracks.forEach((track) => track.stop()); // Stop mic usage
+          tracks.forEach((track) => track.stop());
 
           const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          
+          console.log(`[Mic] Recording stopped. Blob size: ${audioBlob.size} bytes`);
+
           if (wsRef.current?.readyState === WebSocket.OPEN && audioBlob.size > 0) {
             setStatus("thinking");
             audioBufferRef.current = [];
-            // Send binary blob directly!
-            wsRef.current.send(audioBlob);
+            // Convert to ArrayBuffer so the backend receives a definitive binary frame
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            console.log(`[WS] Sending ${arrayBuffer.byteLength} bytes to backend for Whisper transcription...`);
+            wsRef.current.send(arrayBuffer);
+          } else {
+            console.warn("[WS] WebSocket not open or blob is empty, not sending.");
           }
         };
 
         mediaRecorder.start();
       } catch (err) {
-        console.error("Microphone access error:", err);
+        console.error("[Mic] Microphone access error:", err);
         alert("Could not access microphone.");
       }
     }
