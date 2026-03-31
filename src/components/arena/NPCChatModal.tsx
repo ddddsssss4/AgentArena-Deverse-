@@ -38,6 +38,56 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  // Convert any browser audio blob → 16kHz mono WAV (PCM) ArrayBuffer
+  // Whisper on Cloudflare Workers AI requires WAV/PCM format
+  const audioToWav = async (blob: Blob): Promise<ArrayBuffer> => {
+    const rawArrayBuffer = await blob.arrayBuffer();
+    const audioCtx = new AudioContext();
+    const decoded = await audioCtx.decodeAudioData(rawArrayBuffer);
+    await audioCtx.close();
+
+    // Resample + downmix to 16kHz mono (Whisper's native rate)
+    const TARGET_SAMPLE_RATE = 16000;
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offlineCtx.destination);
+    source.start(0);
+    const resampled = await offlineCtx.startRendering();
+    const channelData = resampled.getChannelData(0);
+
+    // Build WAV binary with standard 44-byte header + 16-bit PCM samples
+    const numSamples = channelData.length;
+    const wavBuffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(wavBuffer);
+
+    const writeStr = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + numSamples * 2, true);  // total file size - 8
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);                   // chunk size
+    view.setUint16(20, 1, true);                    // PCM format
+    view.setUint16(22, 1, true);                    // mono
+    view.setUint32(24, TARGET_SAMPLE_RATE, true);   // sample rate
+    view.setUint32(28, TARGET_SAMPLE_RATE * 2, true); // byte rate
+    view.setUint16(32, 2, true);                    // block align
+    view.setUint16(34, 16, true);                   // bits per sample
+    writeStr(36, "data");
+    view.setUint32(40, numSamples * 2, true);       // data chunk size
+
+    // Write 16-bit signed PCM samples
+    for (let i = 0; i < numSamples; i++) {
+      const s = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+
+    return wavBuffer;
+  };
+
   const toggleListening = async () => {
     if (isListening) {
       console.log("[Mic] Stopping recording...");
@@ -45,8 +95,15 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
     } else {
       try {
         console.log("[Mic] Requesting microphone access...");
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+        });
+
+        // Pick best supported format for highest quality recording
+        const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"]
+          .find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+
+        const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
 
@@ -64,21 +121,26 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
         mediaRecorder.onstop = async () => {
           setIsListening(false);
-          const tracks = stream.getTracks();
-          tracks.forEach((track) => track.stop());
+          stream.getTracks().forEach((track) => track.stop());
 
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          console.log(`[Mic] Recording stopped. Blob size: ${audioBlob.size} bytes`);
+          const rawBlob = new Blob(audioChunksRef.current, { type: mimeType || "audio/webm" });
+          console.log(`[Mic] Recording stopped. Raw blob size: ${rawBlob.size} bytes`);
 
-          if (wsRef.current?.readyState === WebSocket.OPEN && audioBlob.size > 0) {
+          if (wsRef.current?.readyState === WebSocket.OPEN && rawBlob.size > 0) {
             setStatus("thinking");
             audioBufferRef.current = [];
-            // Convert to ArrayBuffer so the backend receives a definitive binary frame
-            const arrayBuffer = await audioBlob.arrayBuffer();
-            console.log(`[WS] Sending ${arrayBuffer.byteLength} bytes to backend for Whisper transcription...`);
-            wsRef.current.send(arrayBuffer);
+            try {
+              console.log("[Mic] Converting to WAV/PCM for Whisper...");
+              const wavBuffer = await audioToWav(rawBlob);
+              console.log(`[WS] Sending WAV: ${wavBuffer.byteLength} bytes`);
+              wsRef.current.send(wavBuffer);
+            } catch (convErr) {
+              console.error("[Mic] WAV conversion failed:", convErr);
+              setStatus("error");
+            }
           } else {
-            console.warn("[WS] WebSocket not open or blob is empty, not sending.");
+            console.warn("[WS] WebSocket not open or blob is empty.");
+            setStatus("idle");
           }
         };
 
@@ -103,6 +165,7 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
     const wsUrl = `${protocol}//${host}/ws/npc/${npcId}?npcId=${npcId}&userId=${userId}`;
 
     const ws = new WebSocket(wsUrl);
+    ws.binaryType = "arraybuffer"; // 🔑 Critical for Cloudflare Workers binary parsing
     wsRef.current = ws;
 
     ws.onopen = () => setIsConnected(true);

@@ -37,46 +37,58 @@ export class NPCDurableObject extends DurableObject<Env> {
 
         console.log(`[WS] Message received. Type: ${typeof msg.data}, isArrayBuffer: ${msg.data instanceof ArrayBuffer}`);
 
-        if (typeof msg.data !== "string") {
-          // Binary frame — audio from the user's microphone
-          const rawData = msg.data as ArrayBuffer;
-          const byteSize = rawData.byteLength;
-          console.log(`[Whisper] Received binary audio frame: ${byteSize} bytes. Sending to Whisper...`);
+        // --- 1. Identify Data Type ---
+        if (typeof msg.data === "string") {
+          const parsed = JSON.parse(msg.data) as { type: string; content?: string };
+          if (parsed.type !== "message" || !parsed.content) return;
+          userMessage = parsed.content;
           server.send(JSON.stringify({ type: "status", status: "thinking" }));
-          
+        } else {
+          // Binary audio — workers runtime may deliver as ArrayBuffer OR Blob depending on env
+          const binaryData = msg.data as ArrayBuffer | Blob;
+          let resolvedBuffer: ArrayBuffer;
+
+          if (binaryData instanceof ArrayBuffer) {
+            console.log("[Whisper] Received ArrayBuffer, byteLength:", binaryData.byteLength);
+            resolvedBuffer = binaryData;
+          } else if (typeof (binaryData as Blob).arrayBuffer === "function") {
+            // Cloudflare local dev delivers binary frames as Blob — convert it
+            console.log("[Whisper] Received Blob (local dev), converting via .arrayBuffer()...");
+            resolvedBuffer = await (binaryData as Blob).arrayBuffer();
+            console.log("[Whisper] Resolved byteLength:", resolvedBuffer.byteLength);
+          } else {
+            console.error("[Whisper] Unknown binary type, cannot process.");
+            return;
+          }
+
+          if (resolvedBuffer.byteLength === 0) {
+            console.error("[Whisper] Empty audio buffer received.");
+            server.send(JSON.stringify({ type: "error", error: "Received empty audio. Please try again." }));
+            return;
+          }
+
+          server.send(JSON.stringify({ type: "status", status: "thinking" }));
+
           try {
-            const audioArray = [...new Uint8Array(rawData)];
-            console.log(`[Whisper] Audio array length: ${audioArray.length}. Calling AI...`);
-            
-            const transcription = await this.env.AI.run(
-              "@cf/openai/whisper",
-              { audio: audioArray }
-            ) as { text: string };
-            
-            console.log(`[Whisper] Transcription result: "${transcription.text}"`);
-            userMessage = transcription.text.trim();
-            
+            const audioArray = Array.from(new Uint8Array(resolvedBuffer));
+            console.log(`[Whisper] Sending ${audioArray.length} PCM bytes to Cloudflare Whisper...`);
+
+            const transcription = await this.env.AI.run("@cf/openai/whisper", { audio: audioArray }) as { text: string };
+            userMessage = transcription.text?.trim() ?? "";
+            console.log(`[Whisper] Transcription: "${userMessage}"`);
+
             if (!userMessage) {
-              console.warn("[Whisper] Empty transcription, likely silent audio.");
+              console.warn("[Whisper] No speech detected.");
               server.send(JSON.stringify({ type: "status", status: "ready" }));
               return;
             }
 
             server.send(JSON.stringify({ type: "transcribed_text", content: userMessage }));
           } catch (err) {
-            console.error("[Whisper] Transcription error:", err);
-            server.send(JSON.stringify({ type: "error", error: "Speech-to-text failed." }));
+            console.error("[Whisper] API Error:", err);
+            server.send(JSON.stringify({ type: "error", error: "Voice transcription failed." }));
             return;
           }
-        } else if (typeof msg.data === "string") {
-          console.log(`[WS] Text message: ${msg.data.slice(0, 100)}`);
-          const parsed = JSON.parse(msg.data) as { type: string; content?: string };
-          if (parsed.type !== "message" || !parsed.content) return;
-          userMessage = parsed.content;
-          server.send(JSON.stringify({ type: "status", status: "thinking" }));
-        } else {
-          console.warn("[WS] Unrecognized message type, ignoring.");
-          return;
         }
 
         // ── 1. Memory retrieval (Vectorize) ──────────────────────────────
