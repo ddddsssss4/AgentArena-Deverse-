@@ -37,13 +37,15 @@ export class NPCDurableObject extends DurableObject<Env> {
 
         console.log(`[WS] Message received. Type: ${typeof msg.data}, isArrayBuffer: ${msg.data instanceof ArrayBuffer}`);
 
-        if (msg.data instanceof ArrayBuffer) {
-          const byteSize = msg.data.byteLength;
+        if (typeof msg.data !== "string") {
+          // Binary frame — audio from the user's microphone
+          const rawData = msg.data as ArrayBuffer;
+          const byteSize = rawData.byteLength;
           console.log(`[Whisper] Received binary audio frame: ${byteSize} bytes. Sending to Whisper...`);
           server.send(JSON.stringify({ type: "status", status: "thinking" }));
           
           try {
-            const audioArray = [...new Uint8Array(msg.data)];
+            const audioArray = [...new Uint8Array(rawData)];
             console.log(`[Whisper] Audio array length: ${audioArray.length}. Calling AI...`);
             
             const transcription = await this.env.AI.run(
@@ -60,7 +62,6 @@ export class NPCDurableObject extends DurableObject<Env> {
               return;
             }
 
-            // Echo the transcribed text back so the user sees what they said
             server.send(JSON.stringify({ type: "transcribed_text", content: userMessage }));
           } catch (err) {
             console.error("[Whisper] Transcription error:", err);
