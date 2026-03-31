@@ -172,8 +172,12 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
     ws.onclose = () => setIsConnected(false);
 
     ws.onmessage = async (event) => {
-      // Binary = audio chunk
-      if (event.data instanceof Blob) {
+      // Binary = audio chunk from ElevenLabs
+      if (event.data instanceof ArrayBuffer) {
+        audioBufferRef.current.push(event.data);
+        return;
+      } else if (event.data instanceof Blob) {
+        // Fallback just in case
         const arrayBuffer = await event.data.arrayBuffer();
         audioBufferRef.current.push(arrayBuffer);
         return;
