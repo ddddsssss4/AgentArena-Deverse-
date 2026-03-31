@@ -272,8 +272,8 @@ export default function ArenaStage() {
               onProximityUpdate={handlePlayerProximity}
             />
 
-            {/* NPC Characters (global arena only) */}
-            {!isPrivateRoom &&
+            {/* NPC Characters (global arena only, or if toggled in private) */}
+            {(!isPrivateRoom || searchParams.get("npcs") === "true") &&
               NPC_CONFIGS.map((npc) => (
                 <NPCCharacter
                   key={npc.id}

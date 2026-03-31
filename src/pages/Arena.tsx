@@ -5,6 +5,7 @@ export default function Arena() {
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [bringNpcs, setBringNpcs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -19,7 +20,7 @@ export default function Arena() {
       });
       const data = await res.json() as { code?: string; error?: string };
       if (!res.ok || !data.code) throw new Error(data.error || "Failed to create arena");
-      navigate(`/arena/live?room=${data.code}`);
+      navigate(`/arena/live?room=${data.code}&private=true${bringNpcs ? "&npcs=true" : ""}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create arena");
     } finally {
@@ -43,7 +44,12 @@ export default function Arena() {
       });
       const data = await res.json() as { code?: string; error?: string };
       if (!res.ok || !data.code) throw new Error(data.error || "Invalid join code");
-      navigate(`/arena/live?room=${data.code}`);
+      // Note: the person joining a private room should just go. Whether NPCs are there
+      // should ideally be synced by the room state. For now, we assume if it's a private room,
+      // ?private=true is enough. If we really wanted to hide/show them based on owner,
+      // the ArenaRoomDurableObject should broadcast an "npc_state" event. To keep it simple,
+      // we'll pass npcs=true if they explicitly typed it, otherwise it relies on the URL shared by owner.
+      navigate(`/arena/live?room=${data.code}&private=true`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join arena");
     } finally {
@@ -133,7 +139,7 @@ export default function Arena() {
               </div>
               <div>
                 <h3 className="text-2xl font-bold font-headline">Private Arenas</h3>
-                <p className="text-xs text-on-surface-variant">No NPCs · Team-only · Code access</p>
+                <p className="text-xs text-on-surface-variant">Team-only · Secure communication</p>
               </div>
             </div>
             <div className="space-y-6">
@@ -187,13 +193,25 @@ export default function Arena() {
                   chevron_right
                 </span>
               </button>
+
+              <label className="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/30 cursor-pointer hover:bg-white transition-all">
+                <input 
+                  type="checkbox" 
+                  checked={bringNpcs} 
+                  onChange={(e) => setBringNpcs(e.target.checked)}
+                  className="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant"
+                />
+                <span className="text-xs font-bold text-on-surface-variant select-none">
+                  Bring my Trained NPCs into the room
+                </span>
+              </label>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col gap-3">
-              <span className="material-symbols-outlined text-primary-fixed">terminal</span>
-              <span className="text-xs font-bold leading-tight">No NPCs in Private Rooms</span>
+              <span className="material-symbols-outlined text-primary-fixed">lock</span>
+              <span className="text-xs font-bold leading-tight">Private WebRTC Voice</span>
             </div>
             <div className="p-4 rounded-xl bg-primary-fixed text-primary flex flex-col gap-3">
               <span className="material-symbols-outlined">auto_awesome</span>
