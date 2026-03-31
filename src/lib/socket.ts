@@ -4,6 +4,7 @@
  * Same event shape as before; no changes needed in Character.tsx or arenaStore.ts.
  */
 import { useArenaStore } from "../store/arenaStore";
+import { useChatStore } from "../store/chatStore";
 
 let ws: WebSocket | null = null;
 let selfId: string | null = null;
@@ -94,6 +95,26 @@ export const connectSocket = (roomId = "global") => {
         updatePlayer(id, { isTalking });
         break;
       }
+      case "chatMessage": {
+        const { addMessage } = useChatStore.getState();
+        addMessage({
+          from: msg.from as string,
+          color: msg.color as string,
+          content: msg.content as string,
+          timestamp: msg.timestamp as number,
+          isSelf: false, // incoming messages are always from others
+        });
+        break;
+      }
+      case "webrtc-signal": {
+        // Dispatch as a DOM event so webrtc.ts can react without coupling
+        window.dispatchEvent(
+          new CustomEvent("webrtc-signal", {
+            detail: { from: msg.from, signal: msg.signal },
+          })
+        );
+        break;
+      }
       case "playerLeft": {
         removePlayer(msg.id as string);
         break;
@@ -147,3 +168,9 @@ export const emitWave = (isWaving: boolean) =>
 
 export const emitTalk = (isTalking: boolean) =>
   send({ type: "talk", isTalking });
+
+export const emitChat = (content: string) =>
+  send({ type: "chat", content });
+
+export const emitWebRTCSignal = (to: string, signal: unknown) =>
+  send({ type: "webrtc-signal", to, signal });
