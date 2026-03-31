@@ -1,7 +1,3 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "deverse-server",
@@ -36,12 +32,14 @@
 		}
 	],
 	"ai": {
-		"binding": "AI"
+		"binding": "AI",
+		"remote": true
 	},
 	"vectorize": [
 		{
 			"binding": "VECTORIZE_INDEX",
-			"index_name": "npc-memory-index"
+			"index_name": "npc-memory-index",
+			"remote": true
 		}
 	],
 	"r2_buckets": [
@@ -60,7 +58,7 @@
 	"vars": {
 		"ELEVENLABS_VOICE_ID": "21m00Tcm4TlvDq8ikWAM",
 		"SYSTEM_PROMPT": "You are a helpful AI developer NPC assisting a user in a 3D playground.",
-		"GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID",
+		"GOOGLE_CLIENT_ID": "826228158551-8vghpn3ibpelq7hlds19vbejvblfa91v.apps.googleusercontent.com",
 		"JWT_SECRET": "change-me-in-production",
 		"FRONTEND_URL": "http://localhost:5173"
 	}

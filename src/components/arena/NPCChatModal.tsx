@@ -29,11 +29,81 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<NpcStatus>("idle");
   const [isConnected, setIsConnected] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioBufferRef = useRef<ArrayBuffer[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef<string>("");
+
+  // Initialize Web Speech API
+  useEffect(() => {
+    // @ts-expect-error - SpeechRecognition is missing from standard types
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        finalTranscriptRef.current = "";
+        setIsListening(true);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        // Store in ref (immune to stale closure) & show live preview in input
+        finalTranscriptRef.current = transcript;
+        setInput(transcript);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+
+      // Auto-send when recording stops
+      recognition.onend = () => {
+        setIsListening(false);
+        const transcript = finalTranscriptRef.current.trim();
+        if (transcript && wsRef.current?.readyState === WebSocket.OPEN) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "user", content: transcript, timestamp: new Date() },
+          ]);
+          setInput("");
+          setStatus("thinking");
+          audioBufferRef.current = [];
+          wsRef.current.send(JSON.stringify({ type: "message", content: transcript }));
+          finalTranscriptRef.current = "";
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Voice input is not supported in this browser (try Chrome/Safari).");
+      return;
+    }
+    if (isListening) {
+      // Stopping will trigger onend which auto-sends
+      recognitionRef.current.stop();
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+    }
+  };
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -117,25 +187,20 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
   const playAudio = useCallback(async (chunks: ArrayBuffer[]) => {
     try {
-      const ctx = audioRef.current ?? new AudioContext();
-      audioRef.current = ctx;
-
-      // Concatenate all chunks
-      const totalLength = chunks.reduce((acc, c) => acc + c.byteLength, 0);
-      const combined = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        combined.set(new Uint8Array(chunk), offset);
-        offset += chunk.byteLength;
-      }
-
-      const decoded = await ctx.decodeAudioData(combined.buffer);
-      const source = ctx.createBufferSource();
-      source.buffer = decoded;
-      source.connect(ctx.destination);
-      source.start();
-    } catch {
-      // Audio decode might fail if data is incomplete
+      // Create a single blob from all the binary chunks
+      const blob = new Blob(chunks, { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setStatus("idle");
+      };
+      
+      await audio.play();
+    } catch (err) {
+      console.error("Audio playback failed:", err);
+      setStatus("idle");
     }
   }, []);
 
@@ -244,19 +309,36 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
         {/* Input */}
         <div className="px-4 py-3 border-t border-outline-variant/10 flex items-center gap-2">
+          {/* Microphone Button */}
+          <button
+            onClick={toggleListening}
+            title="Toggle voice input"
+            disabled={status === "thinking" || status === "speaking"}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 shrink-0 ${
+              isListening
+                ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30"
+                : "bg-surface-container-high text-on-surface-variant hover:text-primary hover:bg-primary/10"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {isListening ? "mic" : "mic_none"}
+            </span>
+          </button>
+
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder={`Ask ${npcName} anything…`}
+            placeholder={isListening ? "Listening…" : `Ask ${npcName} anything…`}
             disabled={status === "thinking" || status === "speaking"}
-            className="flex-1 bg-surface-container-low rounded-xl px-4 py-2 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50"
+            className="flex-1 bg-surface-container-low rounded-xl px-4 py-2 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 min-w-0"
           />
+          
           <button
             onClick={sendMessage}
             disabled={!input.trim() || status === "thinking" || status === "speaking"}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 shrink-0"
             style={{ background: npcColor }}
           >
             <span className="material-symbols-outlined text-[18px]">send</span>

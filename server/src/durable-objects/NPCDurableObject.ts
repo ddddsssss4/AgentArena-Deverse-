@@ -117,6 +117,7 @@ export class NPCDurableObject extends DurableObject<Env> {
           );
 
           if (ttsRes.ok && ttsRes.body) {
+            console.log(`[NPC:${npcId}] ElevenLabs stream started`);
             const reader = ttsRes.body.getReader();
             while (true) {
               const { done, value } = await reader.read();
@@ -124,11 +125,14 @@ export class NPCDurableObject extends DurableObject<Env> {
               server.send(value);
             }
             server.send(JSON.stringify({ type: "audioEnd" }));
+            console.log(`[NPC:${npcId}] ElevenLabs stream finished`);
           } else {
+            const errorText = await ttsRes.text();
+            console.error(`[NPC:${npcId}] ElevenLabs Error:`, ttsRes.status, errorText);
             server.send(JSON.stringify({ type: "status", status: "ready" }));
           }
         } else {
-          // No API key — just signal ready
+          console.warn(`[NPC:${npcId}] Skipping voice: ELEVENLABS_API_KEY missing in .dev.vars`);
           server.send(JSON.stringify({ type: "status", status: "ready" }));
         }
 

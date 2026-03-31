@@ -4,7 +4,7 @@ export const NPCS = [
     name: "Aria",
     role: "Frontend Engineer",
     specialty: "React, WebGL, Performance, UI Systems",
-    voiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel - ElevenLabs
+    voiceId: "CwhRBWXzGAHq8TQ4Fs17", // Rachel - ElevenLabs
     position: [10, 0, -5] as [number, number, number],
     color: "#6366f1",
     systemPrompt: `You are Aria, a senior frontend engineer with 8 years of experience. 
