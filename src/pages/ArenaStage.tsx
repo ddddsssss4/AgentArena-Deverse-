@@ -6,8 +6,11 @@ import * as THREE from "three";
 import { Character } from "../components/arena/Character";
 import { NPCCharacter } from "../components/arena/NPCCharacter";
 import { NPCChatModal } from "../components/arena/NPCChatModal";
+import { RoomChat } from "../components/arena/RoomChat";
 import { connectSocket, disconnectSocket, getSelfId } from "../lib/socket";
+import { connectToPeer, disconnectPeer } from "../lib/webrtc";
 import { useArenaStore } from "../store/arenaStore";
+import { useAuthStore } from "../store/authStore";
 
 // ─── NPC config (mirrors server config, positions are where NPCs stand) ───────
 const NPC_CONFIGS = [
@@ -104,15 +107,25 @@ function OfficeEnvironment({ showNPCs }: { showNPCs: boolean }) {
 // ─── Main ArenaStage ──────────────────────────────────────────────────────────
 
 export default function ArenaStage() {
-  const [searchParams] = useSearchParams();
+  const { user } = useAuthStore();
+  const searchParams = useSearchParams()[0];
+  const isPrivateRoom = searchParams.get("private") === "true";
   const roomId = searchParams.get("room") || "global";
-  const isPrivateRoom = roomId !== "global";
 
+  const { players } = useArenaStore();
   const [isConnected, setIsConnected] = useState(false);
-  const [nearbyNpc, setNearbyNpc] = useState<string | null>(null);
   const [activeNpcChat, setActiveNpcChat] = useState<typeof NPC_CONFIGS[number] | null>(null);
+  const [nearbyNpc, setNearbyNpc] = useState<string | null>(null);
 
-  const players = useArenaStore((state) => state.players);
+  // Re-run WebRTC connections whenever a new player arrives/leaves
+  useEffect(() => {
+    if (!isPrivateRoom) return;
+    const playerIds = Object.keys(players);
+    playerIds.forEach((id) => connectToPeer(id));
+    return () => {
+      // Cleanup logic if needed
+    };
+  }, [players, isPrivateRoom]);
 
   useEffect(() => {
     connectSocket(roomId);
@@ -192,6 +205,11 @@ export default function ArenaStage() {
           npcColor={activeNpcChat.color}
           onClose={() => setActiveNpcChat(null)}
         />
+      )}
+
+      {/* Private Room Chat Overlay */}
+      {isPrivateRoom && user && (
+        <RoomChat selfName={user.name} selfColor={user.color} />
       )}
 
       {/* 3D Canvas */}
