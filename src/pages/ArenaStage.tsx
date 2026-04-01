@@ -13,6 +13,7 @@ import { connectSocket, disconnectSocket, getSelfId } from "../lib/socket";
 import { connectToPeer, disconnectPeer } from "../lib/webrtc";
 import { useArenaStore } from "../store/arenaStore";
 import { useAuthStore } from "../store/authStore";
+import { ShortcutsDialog } from "../components/common/ShortcutsDialog";
 
 // ─── NPC config (mirrors server config, positions are where NPCs stand) ───────
 const NPC_CONFIGS = [
@@ -40,6 +41,7 @@ export default function ArenaStage() {
   const [nearbyPlayer, setNearbyPlayer] = useState(false);
   const [activeNpcChat, setActiveNpcChat] = useState<{ id: string; name: string; role: string; color: string } | null>(null);
   const [nearbyNpc, setNearbyNpc] = useState<string | null>(null);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Re-run WebRTC connections whenever a new player arrives/leaves
   useEffect(() => {
@@ -63,17 +65,25 @@ export default function ArenaStage() {
   // Listen for 'T' key to open NPC chat
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // 1. NPC Interaction (T)
       if ((e.key === "t" || e.key === "T") && nearbyNpc && !activeNpcChat) {
         const npc = NPC_CONFIGS.find((n) => n.id === nearbyNpc);
         if (npc) setActiveNpcChat(npc);
       }
-      if (e.key === "Escape" && activeNpcChat) {
-        setActiveNpcChat(null);
+      // 2. Escape to close everything
+      if (e.key === "Escape") {
+        if (activeNpcChat) setActiveNpcChat(null);
+        if (isShortcutsOpen) setIsShortcutsOpen(false);
+      }
+      // 3. Shortcuts Guide (Ctrl+/ or Cmd+/)
+      if (e.key === "/" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [nearbyNpc, activeNpcChat]);
+  }, [nearbyNpc, activeNpcChat, isShortcutsOpen]);
 
   const handlePlayerProximity = useCallback((playerPos: THREE.Vector3) => {
     // 1. NPC Proximity
@@ -156,6 +166,16 @@ export default function ArenaStage() {
               <ZoomIn className="w-4 h-4 shrink-0" />
               <span>Scroll to Zoom In/Out</span>
             </div>
+
+            <div className="h-px w-full bg-white/10 my-3" />
+            
+            <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono">
+              <span>Full Shortcuts Guide</span>
+              <div className="flex gap-1">
+                <kbd className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">CTRL</kbd>
+                <kbd className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">/</kbd>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -188,6 +208,12 @@ export default function ArenaStage() {
           onClose={() => setActiveNpcChat(null)}
         />
       )}
+
+      {/* Shortcuts Guide Modal */}
+      <ShortcutsDialog 
+        isOpen={isShortcutsOpen} 
+        onClose={() => setIsShortcutsOpen(false)} 
+      />
 
       {/* Private Room Chat Overlay */}
       {isPrivateRoom && user && (
