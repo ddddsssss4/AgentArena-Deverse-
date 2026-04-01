@@ -85,6 +85,17 @@ export default function ArenaStage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [nearbyNpc, activeNpcChat, isShortcutsOpen]);
 
+  // Auto-open shortcuts for first-time visitors
+  useEffect(() => {
+    const hasSeenShortcuts = localStorage.getItem("deverse_seen_shortcuts");
+    if (!hasSeenShortcuts) {
+      setTimeout(() => {
+        setIsShortcutsOpen(true);
+        localStorage.setItem("deverse_seen_shortcuts", "true");
+      }, 1500); // Small delay for entrance polish
+    }
+  }, []);
+
   const handlePlayerProximity = useCallback((playerPos: THREE.Vector3) => {
     // 1. NPC Proximity
     const showNpcs = !isPrivateRoom || searchParams.get("npcs") === "true";
@@ -121,82 +132,7 @@ export default function ArenaStage() {
         </div>
       </div>
 
-      {/* Controls Help */}
-      <div className="absolute top-6 right-6 z-10 pointer-events-none">
-        <div className="bg-neutral-900/80 backdrop-blur-xl p-5 rounded-2xl border border-white/10 text-white shadow-2xl w-80 pointer-events-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <h2 className="font-semibold text-lg">Interactive Controls</h2>
-          </div>
-          
-          <div className="space-y-3 text-sm">
-            <div className="flex items-start gap-3">
-              <div className="p-1.5 bg-white/10 rounded-lg shrink-0">
-                <MousePointerClick className="w-4 h-4 text-emerald-300" />
-              </div>
-              <div>
-                <p className="font-medium text-emerald-300">Double-Click to Move</p>
-                <p className="text-neutral-400 text-xs mt-0.5">Focus explicitly on meeting room surfaces</p>
-              </div>
-            </div>
 
-            <div className="flex items-start gap-3">
-              <div className="p-1.5 bg-white/10 rounded-lg shrink-0">
-                <PenTool className="w-4 h-4 text-blue-300" />
-              </div>
-              <div>
-                <p className="font-medium text-blue-300">Interact</p>
-                <p className="text-neutral-400 text-xs mt-0.5">Walk up and press 'T' to talk to NPCs</p>
-              </div>
-            </div>
-
-            <div className="h-px w-full bg-white/10 my-3" />
-
-            <div className="flex items-center gap-3 text-neutral-300">
-              <MousePointer2 className="w-4 h-4 shrink-0" />
-              <span>Left Click + Drag to Rotate</span>
-            </div>
-            
-            <div className="flex items-center gap-3 text-neutral-300">
-              <Move className="w-4 h-4 shrink-0" />
-              <span>Right Click + Drag to Pan</span>
-            </div>
-
-            <div className="flex items-center gap-3 text-neutral-300">
-              <ZoomIn className="w-4 h-4 shrink-0" />
-              <span>Scroll to Zoom In/Out</span>
-            </div>
-
-            <div className="h-px w-full bg-white/10 my-3" />
-            
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono">
-              <span>Full Shortcuts Guide</span>
-              <div className="flex gap-1">
-                <kbd className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">CTRL</kbd>
-                <kbd className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">/</kbd>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-6 left-6 z-10 pointer-events-none">
-        <div className="bg-slate-900/60 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-          <h3 className="text-white font-medium mb-3 text-sm uppercase tracking-wider">Player Controls</h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-white/80">
-            {[["Move", ["W", "A", "S", "D"]], ["Wave", ["Space"]], ["Talk/NPC", ["T"]]].map(([label, keys]) => (
-              <div key={label as string} className="flex items-center justify-between gap-4">
-                <span>{label}</span>
-                <div className="flex gap-1">
-                  {Array.isArray(keys)
-                    ? keys.map((k) => <kbd key={k} className="bg-black/50 px-2 py-1 rounded text-xs border border-white/20">{k}</kbd>)
-                    : <span className="text-xs bg-black/50 px-2 py-1 rounded border border-white/20">{keys}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* NPC Chat Modal */}
       {activeNpcChat && (
