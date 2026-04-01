@@ -18,7 +18,7 @@ export default function TopNav() {
         <div className="text-2xl font-bold tracking-tighter text-[#595e6b] dark:text-white font-['Space_Grotesk'] font-headline">
           Deverse OS
         </div>
-        
+
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
             const isActive = location.pathname.startsWith(link.path) && link.path !== "/" || (location.pathname === "/" && link.path === "/lobby");
@@ -26,18 +26,17 @@ export default function TopNav() {
               <Link
                 key={link.name}
                 to={link.path}
-                className={`font-['Space_Grotesk'] font-headline text-sm tracking-tight transition-colors ${
-                  isActive 
-                    ? "text-[#595e6b] dark:text-white font-bold border-b-2 border-[#595e6b] pb-1" 
+                className={`font-['Space_Grotesk'] font-headline text-sm tracking-tight transition-colors ${isActive
+                    ? "text-[#595e6b] dark:text-white font-bold border-b-2 border-[#595e6b] pb-1"
                     : "text-[#4e6169] dark:text-[#a0a0a0] hover:text-[#595e6b] dark:hover:text-white"
-                }`}
+                  }`}
               >
                 {link.name}
               </Link>
             );
           })}
         </div>
-        
+
         <div className="flex items-center gap-4">
           {!user ? (
             <Link to="/login" className="px-5 py-2 rounded-full border border-outline-variant/30 text-sm font-medium hover:bg-surface-container transition-all text-on-surface">

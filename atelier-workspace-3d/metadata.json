@@ -1,0 +1,5 @@
+{
+  "name": "Atelier Workspace 3D",
+  "description": "A 3D interactive office scene featuring meeting cabins, a cafeteria, a selfie point, and open workspaces built with React Three Fiber.",
+  "requestFramePermissions": []
+}
