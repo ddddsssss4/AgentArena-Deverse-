@@ -1,8 +1,10 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, KeyboardControls, Environment, Text } from "@react-three/drei";
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { CameraControls, KeyboardControls, Environment, Text } from "@react-three/drei";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as THREE from "three";
+import OfficeScene from "../components/arena/workspace/OfficeScene";
+import { MousePointer2, Move, ZoomIn, Coffee, PenTool, MousePointerClick, Headphones } from "lucide-react";
 import { Character } from "../components/arena/Character";
 import { NPCCharacter } from "../components/arena/NPCCharacter";
 import { NPCChatModal } from "../components/arena/NPCChatModal";
@@ -22,91 +24,12 @@ const NPC_CONFIGS = [
 const NPC_PROXIMITY_RADIUS = 5;
 
 // ─── 3D Scene components (unchanged from the existing code) ──────────────────
-
-function Desk({ position, rotation }: { position: [number, number, number]; rotation: [number, number, number] }) {
-  return (
-    <group position={position} rotation={rotation}>
-      <mesh position={[0, 1, 0]} castShadow receiveShadow>
-        <boxGeometry args={[3, 0.1, 1.5]} />
-        <meshStandardMaterial color="#d97706" roughness={0.8} />
-      </mesh>
-      {[[-1.4, -0.6], [1.4, -0.6], [-1.4, 0.6], [1.4, 0.6]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.5, z]} castShadow receiveShadow>
-          <boxGeometry args={[0.1, 1, 0.1]} />
-          <meshStandardMaterial color="#334155" />
-        </mesh>
-      ))}
-      <mesh position={[0, 1.3, -0.3]} castShadow>
-        <boxGeometry args={[1.2, 0.7, 0.1]} />
-        <meshStandardMaterial color="#0f172a" />
-      </mesh>
-      <mesh position={[0, 1.3, -0.24]}>
-        <planeGeometry args={[1.1, 0.6]} />
-        <meshBasicMaterial color="#38bdf8" toneMapped={false} />
-      </mesh>
-    </group>
-  );
-}
-
-function Plant({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.3, 0.2, 0.8]} />
-        <meshStandardMaterial color="#f8fafc" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 1.2, 0]}><sphereGeometry args={[0.6, 16, 16]} /><meshStandardMaterial color="#22c55e" roughness={0.8} /></mesh>
-      <mesh position={[0.3, 1.0, 0.3]}><sphereGeometry args={[0.4, 16, 16]} /><meshStandardMaterial color="#16a34a" roughness={0.8} /></mesh>
-      <mesh position={[-0.3, 1.1, -0.2]}><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color="#15803d" roughness={0.8} /></mesh>
-    </group>
-  );
-}
-
-function OfficeEnvironment({ showNPCs }: { showNPCs: boolean }) {
-  return (
-    <group>
-      <mesh position={[0, -0.05, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#e2e8f0" roughness={0.8} />
-      </mesh>
-      <gridHelper args={[100, 100, '#cbd5e1', '#f1f5f9']} position={[0, 0, 0]} />
-
-      {/* Walls */}
-      <mesh position={[0, 4, -50]} receiveShadow castShadow><boxGeometry args={[100, 8, 1]} /><meshStandardMaterial color="#f8fafc" /></mesh>
-      <mesh position={[50, 4, 0]} receiveShadow castShadow><boxGeometry args={[1, 8, 100]} /><meshStandardMaterial color="#f8fafc" /></mesh>
-      <mesh position={[-50, 4, 0]} receiveShadow castShadow><boxGeometry args={[1, 8, 100]} /><meshStandardMaterial color="#f8fafc" /></mesh>
-      <mesh position={[0, 4, 50]} receiveShadow><boxGeometry args={[100, 8, 1]} /><meshStandardMaterial color="#bae6fd" opacity={0.3} transparent roughness={0.1} /></mesh>
-
-      {/* Selfie Wall */}
-      <group position={[0, 0, -49]}>
-        <mesh position={[0, 4, 0]} receiveShadow castShadow><boxGeometry args={[20, 8, 1]} /><meshStandardMaterial color="#0f172a" /></mesh>
-        <mesh position={[0, 7.5, 0.55]}><boxGeometry args={[20, 0.1, 0.1]} /><meshBasicMaterial color="#38bdf8" /></mesh>
-        <Text position={[0, 4, 0.6]} fontSize={2.5} color="#ffffff" anchorX="center" anchorY="middle" font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff" outlineWidth={0.05} outlineColor="#38bdf8">
-          {showNPCs ? "DevArena" : "Private Room"}
-        </Text>
-        <Text position={[0, 2, 0.6]} fontSize={0.5} color="#94a3b8" anchorX="center" anchorY="middle">{showNPCs ? "#VirtualOffice #DevLife" : "#Team #Private"}</Text>
-      </group>
-
-      {/* Desk clusters */}
-      {[[-20, 25], [20, 25], [0, 25]].map(([px, pz], ci) => (
-        <group key={ci} position={[px, 0, pz]}>
-          {[[-5, -5], [-5, -8], [-9, -5], [-9, -8], [5, -5], [5, -8], [9, -5], [9, -8], [-2, -5], [-2, -8], [2, -5], [2, -8]].slice(ci * 4, ci * 4 + 4).map(([dx, dz], i) => (
-            <Desk key={i} position={[dx, 0, dz]} rotation={[0, i % 2 === 1 ? Math.PI : 0, 0]} />
-          ))}
-        </group>
-      ))}
-
-      {/* Plants */}
-      {[[-48, -48], [48, -48], [48, 48], [-48, 48], [-20, -48], [20, -48], [-20, 48], [20, 48], [-5, 5], [5, 5]].map(([x, z], i) => (
-        <Plant key={i} position={[x, 0, z]} />
-      ))}
-    </group>
-  );
-}
+// Removed old OfficeEnvironment down to this line
 
 // ─── Main ArenaStage ──────────────────────────────────────────────────────────
 
 export default function ArenaStage() {
+  const cameraControlsRef = useRef<any>(null);
   const { user } = useAuthStore();
   const searchParams = useSearchParams()[0];
   const isPrivateRoom = searchParams.get("private") === "true";
@@ -189,11 +112,59 @@ export default function ArenaStage() {
       </div>
 
       {/* Controls Help */}
+      <div className="absolute top-6 right-6 z-10 pointer-events-none">
+        <div className="bg-neutral-900/80 backdrop-blur-xl p-5 rounded-2xl border border-white/10 text-white shadow-2xl w-80 pointer-events-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h2 className="font-semibold text-lg">Interactive Controls</h2>
+          </div>
+          
+          <div className="space-y-3 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-white/10 rounded-lg shrink-0">
+                <MousePointerClick className="w-4 h-4 text-emerald-300" />
+              </div>
+              <div>
+                <p className="font-medium text-emerald-300">Double-Click to Move</p>
+                <p className="text-neutral-400 text-xs mt-0.5">Focus explicitly on meeting room surfaces</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-white/10 rounded-lg shrink-0">
+                <PenTool className="w-4 h-4 text-blue-300" />
+              </div>
+              <div>
+                <p className="font-medium text-blue-300">Interact</p>
+                <p className="text-neutral-400 text-xs mt-0.5">Walk up and press 'T' to talk to NPCs</p>
+              </div>
+            </div>
+
+            <div className="h-px w-full bg-white/10 my-3" />
+
+            <div className="flex items-center gap-3 text-neutral-300">
+              <MousePointer2 className="w-4 h-4 shrink-0" />
+              <span>Left Click + Drag to Rotate</span>
+            </div>
+            
+            <div className="flex items-center gap-3 text-neutral-300">
+              <Move className="w-4 h-4 shrink-0" />
+              <span>Right Click + Drag to Pan</span>
+            </div>
+
+            <div className="flex items-center gap-3 text-neutral-300">
+              <ZoomIn className="w-4 h-4 shrink-0" />
+              <span>Scroll to Zoom In/Out</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="absolute bottom-6 left-6 z-10 pointer-events-none">
         <div className="bg-slate-900/60 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-          <h3 className="text-white font-medium mb-3 text-sm uppercase tracking-wider">Controls</h3>
+          <h3 className="text-white font-medium mb-3 text-sm uppercase tracking-wider">Player Controls</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-white/80">
-            {[["Move", ["W", "A", "S", "D"]], ["Wave", ["Space"]], ["Talk/NPC", ["T"]], ["Camera", "Drag"]].map(([label, keys]) => (
+            {[["Move", ["W", "A", "S", "D"]], ["Wave", ["Space"]], ["Talk/NPC", ["T"]]].map(([label, keys]) => (
               <div key={label as string} className="flex items-center justify-between gap-4">
                 <span>{label}</span>
                 <div className="flex gap-1">
@@ -263,9 +234,9 @@ export default function ArenaStage() {
               shadow-camera-top={50}
               shadow-camera-bottom={-50}
             />
-            <Environment preset="apartment" />
+            <Environment preset="city" />
 
-            <OfficeEnvironment showNPCs={!isPrivateRoom} />
+            <OfficeScene />
 
             {/* Remote players */}
             {Object.values(players).map((player) => (
@@ -302,13 +273,15 @@ export default function ArenaStage() {
                 />
               ))}
 
-            <OrbitControls
-              makeDefault
-              minPolarAngle={0}
+            <CameraControls 
+              ref={cameraControlsRef}
+              makeDefault 
+              minPolarAngle={0} 
               maxPolarAngle={Math.PI / 2 - 0.05}
-              minDistance={2}
               maxDistance={80}
-              target={[0, 1, 0]}
+              minDistance={2}
+              dollySpeed={1.5}
+              smoothTime={0.4}
             />
           </Canvas>
         </KeyboardControls>
