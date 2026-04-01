@@ -73,7 +73,10 @@ export class NPCDurableObject extends DurableObject<Env> {
             const audioArray = Array.from(new Uint8Array(resolvedBuffer));
             console.log(`[Whisper] Sending ${audioArray.length} PCM bytes to Cloudflare Whisper...`);
 
-            const transcription = await this.env.AI.run("@cf/openai/whisper", { audio: audioArray }) as { text: string };
+            const transcription = await this.env.AI.run("@cf/openai/whisper", { 
+              audio: audioArray,
+              language: "en" 
+            }) as { text: string };
             userMessage = transcription.text?.trim() ?? "";
             console.log(`[Whisper] Transcription: "${userMessage}"`);
 
