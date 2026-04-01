@@ -11,8 +11,18 @@ interface WhiteboardProps {
 }
 
 export default function Whiteboard({ position, rotation = [0, 0, 0], size, title = "Brainstorming Board" }: WhiteboardProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
-  const textureRef = useRef<THREE.CanvasTexture>(null);
+  const [canvas] = useState(() => {
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 512;
+    return c;
+  });
+  const [texture] = useState(() => {
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace; // Critical for proper colors in modern ThreeJS
+    return tex;
+  });
+
   const isDrawingRef = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -27,7 +37,6 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
   }, [hovered]);
 
   const clearCanvas = (initial = false) => {
-    const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.fillStyle = 'white';
@@ -57,13 +66,10 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
         ctx.fillText('Draw here...', canvas.width / 2, canvas.height / 2);
       }
     }
-    if (textureRef.current) textureRef.current.needsUpdate = true;
+    texture.needsUpdate = true;
   };
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    canvas.width = 1024;
-    canvas.height = 512;
     clearCanvas(true);
   }, []);
 
@@ -72,7 +78,6 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
     const uv = e.uv;
     if (!uv) return;
 
-    const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -88,7 +93,7 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
-      if (textureRef.current) textureRef.current.needsUpdate = true;
+      texture.needsUpdate = true;
     }
     lastPos.current = { x, y };
   };
@@ -138,8 +143,8 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
           const uv = e.uv;
           if (uv) {
             lastPos.current = {
-              x: uv.x * canvasRef.current.width,
-              y: (1 - uv.y) * canvasRef.current.height,
+              x: uv.x * canvas.width,
+              y: (1 - uv.y) * canvas.height,
             };
           }
         }}
@@ -156,9 +161,7 @@ export default function Whiteboard({ position, rotation = [0, 0, 0], size, title
         }}
       >
         <planeGeometry args={[size[0], size[1]]} />
-        <meshStandardMaterial roughness={0.2} metalness={0.1}>
-          <canvasTexture ref={textureRef} attach="map" image={canvasRef.current} />
-        </meshStandardMaterial>
+        <meshStandardMaterial roughness={0.2} metalness={0.1} map={texture} />
       </mesh>
 
       {/* Tool Tray */}
