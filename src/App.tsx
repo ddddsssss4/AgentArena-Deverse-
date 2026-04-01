@@ -8,6 +8,7 @@ import Arena from "./pages/Arena";
 import ArenaStage from "./pages/ArenaStage";
 import ChatHistory from "./pages/ChatHistory";
 import TrainNPC from "./pages/TrainNPC";
+import CreateNPC from "./pages/CreateNPC";
 import MyArenas from "./pages/MyArenas";
 import { useAuthStore } from "./store/authStore";
 
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="my-arenas" element={<MyArenas />} />
           <Route path="history" element={<ChatHistory />} />
           <Route path="train" element={<TrainNPC />} />
+          <Route path="create-npc" element={<CreateNPC />} />
         </Route>
         <Route path="*" element={<Navigate to="/lobby" replace />} />
       </Routes>
