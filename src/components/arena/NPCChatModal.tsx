@@ -32,7 +32,7 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
   const [isListening, setIsListening] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const audioRef = useRef<AudioContext | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioBufferRef = useRef<ArrayBuffer[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -250,11 +250,14 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
 
   const playAudio = useCallback(async (chunks: ArrayBuffer[]) => {
     try {
+      if (!audioPlayerRef.current) return;
       // Create a single blob from all the binary chunks
       const blob = new Blob(chunks, { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const audio = audioPlayerRef.current;
       
+      audio.src = url;
+      audio.load();
       audio.onended = () => {
         URL.revokeObjectURL(url);
         setStatus("idle");
@@ -408,6 +411,7 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
           </button>
         </div>
       </div>
+      <audio ref={audioPlayerRef} className="hidden" />
     </div>
   );
 };
