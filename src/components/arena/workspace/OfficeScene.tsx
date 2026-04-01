@@ -51,31 +51,31 @@ export default function OfficeScene() {
     <group onDoubleClick={handleDoubleClick}>
       {/* Floor */}
       <mesh receiveShadow position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[40, 40]} />
+        <planeGeometry args={[80, 80]} />
         <primitive object={floorMaterial} attach="material" />
       </mesh>
 
       {/* Outer Walls */}
       <group>
         {/* Back Wall */}
-        <mesh receiveShadow castShadow position={[0, 3, -20]}>
-          <boxGeometry args={[40, 6, 0.5]} />
+        <mesh receiveShadow castShadow position={[0, 3, -40]}>
+          <boxGeometry args={[80, 6, 0.5]} />
           <primitive object={wallMaterial} attach="material" />
         </mesh>
         {/* Left Wall */}
-        <mesh receiveShadow castShadow position={[-20, 3, 0]}>
-          <boxGeometry args={[0.5, 6, 40]} />
+        <mesh receiveShadow castShadow position={[-40, 3, 0]}>
+          <boxGeometry args={[0.5, 6, 80]} />
           <primitive object={wallMaterial} attach="material" />
         </mesh>
         {/* Right Wall */}
-        <mesh receiveShadow castShadow position={[20, 3, 0]}>
-          <boxGeometry args={[0.5, 6, 40]} />
+        <mesh receiveShadow castShadow position={[40, 3, 0]}>
+          <boxGeometry args={[0.5, 6, 80]} />
           <primitive object={wallMaterial} attach="material" />
         </mesh>
       </group>
 
       {/* Artwork on Left Wall */}
-      <group position={[-19.7, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[-39.7, 3, 0]} rotation={[0, Math.PI / 2, 0]}>
         <mesh castShadow receiveShadow position={[-4, 0, 0]}>
           <boxGeometry args={[2, 3, 0.1]} />
           <primitive object={artFrameMaterial} attach="material" />
@@ -103,27 +103,29 @@ export default function OfficeScene() {
       </group>
 
       {/* Reception */}
-      <Reception position={[0, 0, 15]} rotation={[0, Math.PI, 0]} />
+      <Reception position={[0, 0, 25]} rotation={[0, Math.PI, 0]} />
 
       {/* Cabins (Meeting Rooms) */}
-      <Cabin position={[-14, 0, -14]} rotation={[0, 0, 0]} size={[10, 5, 10]} name="Conference A" color="#3b82f6" />
-      <Cabin position={[-2, 0, -14]} rotation={[0, 0, 0]} size={[8, 5, 10]} name="Huddle 1" color="#10b981" />
-      <Cabin position={[8, 0, -14]} rotation={[0, 0, 0]} size={[8, 5, 10]} name="Huddle 2" color="#f59e0b" />
+      <Cabin position={[-24, 0, -28]} rotation={[0, 0, 0]} size={[12, 5, 12]} name="Conference A" color="#3b82f6" />
+      <Cabin position={[0, 0, -28]} rotation={[0, 0, 0]} size={[10, 5, 12]} name="Huddle 1" color="#10b981" />
+      <Cabin position={[24, 0, -28]} rotation={[0, 0, 0]} size={[10, 5, 12]} name="Huddle 2" color="#f59e0b" />
 
       {/* Cafeteria */}
-      <Cafeteria position={[12, 0, 10]} rotation={[0, -Math.PI / 2, 0]} />
+      <Cafeteria position={[28, 0, 15]} rotation={[0, -Math.PI / 2, 0]} />
 
       {/* Selfie Point */}
-      <SelfiePoint position={[-15, 0, 15]} rotation={[0, Math.PI / 4, 0]} />
+      <SelfiePoint position={[-28, 0, 25]} rotation={[0, Math.PI / 2, 0]} />
 
       {/* Music Station */}
-      <MusicStation position={[-15, 0, 5]} rotation={[0, Math.PI / 2, 0]} />
+      <MusicStation position={[-28, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
 
       {/* Open Workspace */}
-      <DeskGroup position={[-10, 0, 0]} rotation={[0, 0, 0]} />
-      <DeskGroup position={[0, 0, 0]} rotation={[0, 0, 0]} />
-      <DeskGroup position={[-10, 0, 8]} rotation={[0, 0, 0]} />
-      <DeskGroup position={[0, 0, 8]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[-15, 0, -10]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[15, 0, -10]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[-15, 0, 10]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[15, 0, 10]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[0, 0, -5]} rotation={[0, 0, 0]} />
+      <DeskGroup position={[0, 0, 12]} rotation={[0, 0, 0]} />
 
       {/* Decor & Plants */}
       <Decor />
