@@ -70,12 +70,12 @@ export class NPCDurableObject extends DurableObject<Env> {
           server.send(JSON.stringify({ type: "status", status: "thinking" }));
 
           try {
+            // Cloudflare Whisper requires an array of integers representing the byte array of the audio file.
             const audioArray = Array.from(new Uint8Array(resolvedBuffer));
-            console.log(`[Whisper] Sending ${audioArray.length} PCM bytes to Cloudflare Whisper...`);
+            console.log(`[Whisper] Sending ${audioArray.length} bytes to Cloudflare Whisper...`);
 
-            const transcription = await this.env.AI.run("@cf/openai/whisper", { 
+            const transcription = await this.env.AI.run("@cf/openai/whisper", {
               audio: audioArray,
-              language: "en" 
             }) as { text: string };
             userMessage = transcription.text?.trim() ?? "";
             console.log(`[Whisper] Transcription: "${userMessage}"`);
@@ -97,7 +97,7 @@ export class NPCDurableObject extends DurableObject<Env> {
         // ── 0. Load user overrides ───────────────────────────────────────
         let activeSystemPrompt = npcConfig.systemPrompt;
         let activeVoiceId: string = npcConfig.voiceId;
-        
+
         if (userId !== "anonymous") {
           const settings = await getUserNpcSettings(this.env.DB, userId, npcId);
           if (settings) {
@@ -115,8 +115,8 @@ export class NPCDurableObject extends DurableObject<Env> {
         const vector = queryEmbedding.data[0];
 
         // Filter by userId if authenticated, else just npcId
-        const filterStr = userId !== "anonymous" 
-          ? { npcId, userId } 
+        const filterStr = userId !== "anonymous"
+          ? { npcId, userId }
           : { npcId };
 
         const memoryQuery = await this.env.VECTORIZE_INDEX.query(vector, {
