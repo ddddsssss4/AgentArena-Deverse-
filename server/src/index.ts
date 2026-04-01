@@ -18,6 +18,9 @@ import {
   addNpcKnowledge,
   getNpcKnowledge,
   getUserNpcSettings,
+  saveUserAgent,
+  getUserAgent,
+  deleteUserAgent,
 } from "./lib/db";
 import { NPCS } from "./config/npcs";
 
@@ -212,6 +215,199 @@ export default {
         return Response.json({ error: "Invalid code" }, { status: 400, headers: CORS });
       }
       return Response.json({ code: code.trim().toUpperCase() }, { status: 200, headers: CORS });
+    }
+
+    // ── Custom Agent: Clone Voice ───────────────────────────────────────────
+    if (path === "/api/agent/clone-voice" && request.method === "POST") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+
+      const elevenLabsApiKey = (env as unknown as { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
+      if (!elevenLabsApiKey) {
+        return Response.json({ error: "ElevenLabs API key not configured" }, { status: 500, headers: CORS });
+      }
+
+      try {
+        // Forward the multipart form data directly to ElevenLabs IVC endpoint
+        const formData = await request.formData();
+        const audioFile = formData.get("file") as File | null;
+        const voiceName = formData.get("name") as string | null;
+
+        if (!audioFile || !voiceName) {
+          return Response.json({ error: "Missing file or name" }, { status: 400, headers: CORS });
+        }
+
+        const elForm = new FormData();
+        elForm.append("name", voiceName);
+        elForm.append("files", audioFile);
+
+        const elRes = await fetch("https://api.elevenlabs.io/v1/voices/add", {
+          method: "POST",
+          headers: { "xi-api-key": elevenLabsApiKey },
+          body: elForm,
+        });
+
+        if (!elRes.ok) {
+          const errText = await elRes.text();
+          console.error("[ElevenLabs] Voice clone error:", elRes.status, errText);
+          return Response.json({ error: "Voice cloning failed" }, { status: elRes.status, headers: CORS });
+        }
+
+        const result = await elRes.json() as { voice_id: string };
+        return Response.json({ voiceId: result.voice_id }, { status: 200, headers: CORS });
+      } catch (err) {
+        console.error("[Agent] Clone voice error:", err);
+        return Response.json({ error: "Internal error" }, { status: 500, headers: CORS });
+      }
+    }
+
+    // ── Custom Agent: Create ────────────────────────────────────────────────
+    if (path === "/api/agent/create" && request.method === "POST") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+
+      const elevenLabsApiKey = (env as unknown as { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
+      if (!elevenLabsApiKey) {
+        return Response.json({ error: "ElevenLabs API key not configured" }, { status: 500, headers: CORS });
+      }
+
+      try {
+        const body = await request.json() as {
+          name: string;
+          systemPrompt: string;
+          firstMessage: string;
+          voiceId: string;
+          knowledgeText?: string;
+        };
+
+        if (!body.name || !body.systemPrompt || !body.voiceId) {
+          return Response.json({ error: "Missing required fields" }, { status: 400, headers: CORS });
+        }
+
+        // Step 1: Create knowledge base document if text is provided
+        let knowledgeDocId: string | undefined;
+        if (body.knowledgeText && body.knowledgeText.length > 0) {
+          const kbRes = await fetch("https://api.elevenlabs.io/v1/convai/knowledge-base/text", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "xi-api-key": elevenLabsApiKey,
+            },
+            body: JSON.stringify({
+              name: `${body.name} - Knowledge Base`,
+              text: body.knowledgeText,
+            }),
+          });
+
+          if (kbRes.ok) {
+            const kbResult = await kbRes.json() as { id: string };
+            knowledgeDocId = kbResult.id;
+            console.log(`[Agent] KB document created: ${knowledgeDocId}`);
+          } else {
+            console.warn("[Agent] KB creation failed, proceeding without RAG:", await kbRes.text());
+          }
+        }
+
+        // Step 2: Create the conversational agent
+        const agentConfig: Record<string, unknown> = {
+          name: body.name,
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: body.systemPrompt,
+              },
+              first_message: body.firstMessage || `Hello! I'm ${body.name}. How can I help?`,
+              language: "en",
+            },
+            tts: {
+              voice_id: body.voiceId,
+              model_id: "eleven_flash_v2_5",
+            },
+          },
+        };
+
+        // If KB doc was created, enable RAG
+        if (knowledgeDocId) {
+          const config = agentConfig.conversation_config as Record<string, unknown>;
+          const agent = config.agent as Record<string, unknown>;
+          const prompt = agent.prompt as Record<string, unknown>;
+          prompt.knowledge_base = [{ type: "document", id: knowledgeDocId, usage_mode: "auto" }];
+          prompt.rag = {
+            enabled: true,
+            embedding_model: "e5_mistral_7b_instruct",
+            max_documents_length: 10000,
+          };
+        }
+
+        const agentRes = await fetch("https://api.elevenlabs.io/v1/convai/agents/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": elevenLabsApiKey,
+          },
+          body: JSON.stringify(agentConfig),
+        });
+
+        if (!agentRes.ok) {
+          const errText = await agentRes.text();
+          console.error("[ElevenLabs] Agent creation error:", agentRes.status, errText);
+          return Response.json({ error: "Agent creation failed", details: errText }, { status: agentRes.status, headers: CORS });
+        }
+
+        const agentResult = await agentRes.json() as { agent_id: string };
+
+        // Step 3: Save to D1
+        await saveUserAgent(env.DB, {
+          userId: user.id,
+          agentId: agentResult.agent_id,
+          voiceId: body.voiceId,
+          name: body.name,
+        });
+
+        console.log(`[Agent] Created for user ${user.id}: ${agentResult.agent_id}`);
+        return Response.json({ agentId: agentResult.agent_id }, { status: 200, headers: CORS });
+      } catch (err) {
+        console.error("[Agent] Create error:", err);
+        return Response.json({ error: "Internal error" }, { status: 500, headers: CORS });
+      }
+    }
+
+    // ── Custom Agent: Get Mine ──────────────────────────────────────────────
+    if (path === "/api/agent/mine" && request.method === "GET") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+
+      const agent = await getUserAgent(env.DB, user.id);
+      return Response.json({ agent }, { status: 200, headers: CORS });
+    }
+
+    // ── Custom Agent: Delete ────────────────────────────────────────────────
+    if (path === "/api/agent/mine" && request.method === "DELETE") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
+
+      const elevenLabsApiKey = (env as unknown as { ELEVENLABS_API_KEY?: string }).ELEVENLABS_API_KEY;
+      const agent = await getUserAgent(env.DB, user.id);
+
+      if (agent && elevenLabsApiKey) {
+        // Best-effort delete from ElevenLabs
+        try {
+          await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.agentId}`, {
+            method: "DELETE",
+            headers: { "xi-api-key": elevenLabsApiKey },
+          });
+          // Also delete the cloned voice
+          await fetch(`https://api.elevenlabs.io/v1/voices/${agent.voiceId}`, {
+            method: "DELETE",
+            headers: { "xi-api-key": elevenLabsApiKey },
+          });
+        } catch (e) {
+          console.warn("[Agent] ElevenLabs cleanup error (non-critical):", e);
+        }
+      }
+
+      await deleteUserAgent(env.DB, user.id);
+      return Response.json({ ok: true }, { status: 200, headers: CORS });
     }
 
     // ── Health check ──────────────────────────────────────────────────────
