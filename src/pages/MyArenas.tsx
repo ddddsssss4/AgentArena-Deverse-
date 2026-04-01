@@ -98,11 +98,12 @@ export default function MyArenas() {
             </div>
             
             <div className="bg-surface-container-lowest p-6 rounded-xl space-y-6 mt-8">
-              <div className="flex items-center justify-between">
+              {/* NPC Toggle */}
+              <div className="flex items-center justify-between pb-6 border-b border-outline-variant/10">
                 <div className="space-y-1">
-                  <label className="font-bold text-on-surface">Sync Neural Knowledge (RAG)</label>
+                  <label className="font-bold text-on-surface">Include Autonomous Agents (NPCs)</label>
                   <p className="text-xs text-outline leading-relaxed max-w-sm">
-                    Authorizing Durable Objects to retrieve vector embeddings from encrypted local store.
+                    Spawn Aria, Kai, and Nova into this private room for AI-assisted spatial debugging.
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -113,6 +114,20 @@ export default function MyArenas() {
                     onChange={(e) => setBringNpcs(e.target.checked)}
                   />
                   <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
+              {/* RAG Toggle (Visual only for now) */}
+              <div className="flex items-center justify-between opacity-50 cursor-not-allowed">
+                <div className="space-y-1">
+                  <label className="font-bold text-on-surface">Sync Neural Knowledge (RAG)</label>
+                  <p className="text-xs text-outline leading-relaxed max-w-sm">
+                    Allow room bots to access your local workspace embeddings. (Coming Soon)
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center pointer-events-none">
+                  <input type="checkbox" className="sr-only peer" disabled />
+                  <div className="w-11 h-6 bg-surface-container-highest rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/50 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5"></div>
                 </label>
               </div>
             </div>
