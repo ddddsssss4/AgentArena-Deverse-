@@ -255,14 +255,14 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
       const blob = new Blob(chunks, { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const audio = audioPlayerRef.current;
-      
+
       audio.src = url;
       audio.load();
       audio.onended = () => {
         URL.revokeObjectURL(url);
         setStatus("idle");
       };
-      
+
       await audio.play();
     } catch (err) {
       console.error("Audio playback failed:", err);
@@ -296,46 +296,49 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
   return (
     <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-auto">
       <div
-        className="mx-4 mb-4 rounded-2xl border border-outline-variant/20 shadow-2xl overflow-hidden"
-        style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px)" }}
+        className="mx-4 mb-4 rounded-3xl border border-white/10 shadow-2xl overflow-hidden glass-morphism"
+        style={{ background: "rgba(13, 17, 23, 0.85)", backdropFilter: "blur(24px)" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-outline-variant/10"
-          style={{ background: `${npcColor}15` }}>
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5"
+          style={{ background: `${npcColor}10` }}>
+          <div className="flex items-center gap-4">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-lg font-space font-bold shadow-lg"
               style={{ background: npcColor }}
             >
               {npcName[0]}
             </div>
             <div>
-              <p className="font-bold text-sm text-on-surface">{npcName}</p>
-              <p className="text-[10px] text-on-surface-variant">{npcRole}</p>
+              <p className="font-space font-bold text-base text-white tracking-tight">{npcName}</p>
+              <p className="text-[11px] font-body text-white/50 uppercase tracking-widest">{npcRole}</p>
             </div>
-            <div className="flex items-center gap-1.5 ml-2">
+            <div className="flex items-center gap-2 ml-4 px-2 py-0.5 bg-black/40 rounded-full border border-white/5">
               <div
-                className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-emerald-500" : "bg-outline-variant"}`}
+                className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-emerald-400 animate-pulse" : "bg-white/20"}`}
               />
-              <span className="text-[10px] text-on-surface-variant font-medium">
+              <span className="text-[10px] font-mono text-white/70 uppercase tracking-tighter">
                 {statusLabel[status]}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container-low"
+            className="text-white/40 hover:text-white transition-all p-1.5 rounded-xl hover:bg-white/10 active:scale-95"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
 
         {/* Messages */}
-        <div className="h-48 overflow-y-auto px-4 py-3 space-y-2">
+        <div className="h-64 overflow-y-auto px-6 py-4 space-y-4 no-scrollbar">
           {messages.length === 0 && (
-            <p className="text-center text-on-surface-variant text-xs mt-8">
-              Say hi to {npcName}! Ask anything about {npcRole}.
-            </p>
+            <div className="h-full flex flex-col items-center justify-center opacity-30 select-none">
+              <span className="material-symbols-outlined text-4xl mb-2 text-white">chat_bubble</span>
+              <p className="text-center font-body text-white text-xs max-w-[200px]">
+                Sync established. Initiate conversation with {npcName}.
+              </p>
+            </div>
           )}
           {messages.map((msg, i) => (
             <div
@@ -343,14 +346,13 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               {msg.role === "status" ? (
-                <p className="text-xs text-red-500 italic">{msg.content}</p>
+                <p className="text-[10px] font-mono text-red-400 uppercase tracking-widest opacity-80">{msg.content}</p>
               ) : (
                 <div
-                  className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
-                    msg.role === "user"
-                      ? "bg-primary text-white rounded-br-sm"
-                      : "bg-surface-container text-on-surface rounded-bl-sm"
-                  }`}
+                  className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm font-body leading-relaxed ${msg.role === "user"
+                      ? "bg-white/10 text-white border border-white/10 rounded-br-none shadow-sm"
+                      : "bg-white/5 text-white/90 border border-white/5 rounded-bl-none"
+                    }`}
                 >
                   {msg.content}
                 </div>
@@ -359,11 +361,11 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
           ))}
           {status === "thinking" && (
             <div className="flex justify-start">
-              <div className="bg-surface-container px-3 py-2 rounded-xl rounded-bl-sm flex gap-1">
+              <div className="bg-white/5 px-4 py-3 rounded-2xl rounded-bl-none flex gap-1.5">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce"
+                    className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce"
                     style={{ animationDelay: `${i * 0.15}s` }}
                   />
                 ))}
@@ -374,41 +376,42 @@ export const NPCChatModal: React.FC<NPCChatModalProps> = ({
         </div>
 
         {/* Input */}
-        <div className="px-4 py-3 border-t border-outline-variant/10 flex items-center gap-2">
+        <div className="px-5 py-4 border-t border-white/5 flex items-center gap-3">
           {/* Microphone Button */}
           <button
             onClick={toggleListening}
             title="Toggle voice input"
             disabled={status === "thinking" || status === "speaking"}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 shrink-0 ${
-              isListening
-                ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30"
-                : "bg-surface-container-high text-on-surface-variant hover:text-primary hover:bg-primary/10"
-            }`}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shrink-0 ${isListening
+                ? "bg-red-500/80 text-white animate-pulse shadow-lg shadow-red-500/20"
+                : "bg-white/10 text-white/80 hover:text-white hover:bg-white/15 border border-white/5"
+              }`}
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span className="material-symbols-outlined text-[20px]">
               {isListening ? "mic" : "mic_none"}
             </span>
           </button>
 
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder={isListening ? "Listening…" : `Ask ${npcName} anything…`}
-            disabled={status === "thinking" || status === "speaking"}
-            className="flex-1 bg-surface-container-low rounded-xl px-4 py-2 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 min-w-0"
-          />
-          
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || status === "thinking" || status === "speaking"}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 shrink-0"
-            style={{ background: npcColor }}
-          >
-            <span className="material-symbols-outlined text-[18px]">send</span>
-          </button>
+          <div className="flex-1 relative flex items-center">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder={isListening ? "Listening..." : `Message ${npcName}...`}
+              disabled={status === "thinking" || status === "speaking"}
+              className="w-full bg-white/5 rounded-2xl px-5 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:ring-1 focus:ring-white/10 border border-white/5 transition-all disabled:opacity-30 font-body"
+            />
+            
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || status === "thinking" || status === "speaking"}
+              className="absolute right-2 w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-0 shrink-0 hover:brightness-110 shadow-lg"
+              style={{ background: npcColor }}
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+            </button>
+          </div>
         </div>
       </div>
       <audio ref={audioPlayerRef} className="hidden" />
