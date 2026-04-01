@@ -1,10 +1,10 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc } from "drizzle-orm";
-import { users, sessions, chatTurns, npcKnowledge, userNpcSettings } from "../db/schema";
-import type { User, UserNpcSetting, NpcKnowledge } from "../db/schema";
+import { users, sessions, chatTurns, npcKnowledge, userNpcSettings, userAgents } from "../db/schema";
+import type { User, UserNpcSetting, NpcKnowledge, UserAgent } from "../db/schema";
 
 export function getDb(d1: D1Database) {
-  return drizzle(d1, { schema: { users, sessions, chatTurns, npcKnowledge, userNpcSettings } });
+  return drizzle(d1, { schema: { users, sessions, chatTurns, npcKnowledge, userNpcSettings, userAgents } });
 }
 
 // ─── User helpers ───────────────────────────────────────────────────────────
@@ -236,3 +236,53 @@ function randomPlayerColor(): string {
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
+// ─── User Agent (Custom NPC) helpers ────────────────────────────────────────────
+
+export async function saveUserAgent(
+  d1: D1Database,
+  data: { userId: string; agentId: string; voiceId: string; name: string }
+): Promise<void> {
+  const db = getDb(d1);
+  const existing = await db
+    .select()
+    .from(userAgents)
+    .where(eq(userAgents.userId, data.userId))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(userAgents)
+      .set({ agentId: data.agentId, voiceId: data.voiceId, name: data.name })
+      .where(eq(userAgents.userId, data.userId));
+  } else {
+    await db.insert(userAgents).values({
+      userId: data.userId,
+      agentId: data.agentId,
+      voiceId: data.voiceId,
+      name: data.name,
+    });
+  }
+}
+
+export async function getUserAgent(
+  d1: D1Database,
+  userId: string
+): Promise<UserAgent | null> {
+  const db = getDb(d1);
+  const result = await db
+    .select()
+    .from(userAgents)
+    .where(eq(userAgents.userId, userId))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function deleteUserAgent(
+  d1: D1Database,
+  userId: string
+): Promise<void> {
+  const db = getDb(d1);
+  await db.delete(userAgents).where(eq(userAgents.userId, userId));
+}
+

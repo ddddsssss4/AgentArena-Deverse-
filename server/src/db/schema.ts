@@ -60,8 +60,21 @@ export const userNpcSettings = sqliteTable("user_npc_settings", {
     .notNull(),
 });
 
+export const userAgents = sqliteTable("user_agents", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  agentId: text("agent_id").notNull(),
+  voiceId: text("voice_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type ChatTurn = typeof chatTurns.$inferSelect;
 export type NpcKnowledge = typeof npcKnowledge.$inferSelect;
 export type UserNpcSetting = typeof userNpcSettings.$inferSelect;
+export type UserAgent = typeof userAgents.$inferSelect;
