@@ -20,12 +20,40 @@ type WizardStep = "voice" | "knowledge" | "config" | "live";
 
 // ─── Conversation Widget ────────────────────────────────────────────────────
 
-function ConversationWidget({ agentId, agentName }: { agentId: string; agentName: string }) {
+function ConversationWidget({ agentId, agentName, onTimeout }: { agentId: string; agentName: string; onTimeout?: () => void }) {
   const { startSession, endSession } = useConversationControls();
   const { status } = useConversationStatus();
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const isConnected = status === "connected";
   const isConnecting = status === "connecting";
+
+  // Session limit timer
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    if (isConnected) {
+      const startTime = Date.now();
+      const LIMIT = 150 * 1000; // 150 seconds = 2.5 minutes
+      setTimeLeft(150);
+
+      interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, Math.floor((LIMIT - elapsed) / 1000));
+        setTimeLeft(remaining);
+
+        if (elapsed >= LIMIT) {
+          endSession();
+          onTimeout?.();
+          clearInterval(interval);
+        }
+      }, 1000);
+    } else {
+      setTimeLeft(null);
+    }
+
+    return () => clearInterval(interval);
+  }, [isConnected, endSession, onTimeout]);
 
   const handleToggle = async () => {
     if (isConnected) {
@@ -60,7 +88,7 @@ function ConversationWidget({ agentId, agentName }: { agentId: string; agentName
         )}
       </div>
 
-      {/* Status */}
+      {/* Status & Timer */}
       <div className="text-center space-y-2">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-outline font-headline">
           {isConnected
@@ -69,6 +97,16 @@ function ConversationWidget({ agentId, agentName }: { agentId: string; agentName
             ? "ESTABLISHING CONNECTION..."
             : `READY TO TALK TO ${agentName.toUpperCase()}`}
         </p>
+        
+        {timeLeft !== null && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-container-high rounded-full border border-outline-variant/10">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <p className="text-[10px] font-mono font-bold text-amber-500 tracking-wider">
+              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")} REMAINING
+            </p>
+          </div>
+        )}
+
         <p className="text-[10px] text-secondary">
           {isConnected
             ? "Your agent is listening. Speak naturally."
@@ -326,7 +364,11 @@ export default function CreateNPC() {
           </div>
           <div className="bg-surface-container-lowest rounded-2xl p-12 shadow-xl border border-outline-variant/10">
             <ConversationProvider>
-              <ConversationWidget agentId={existingAgent.agentId} agentName={existingAgent.name} />
+              <ConversationWidget
+                agentId={existingAgent.agentId}
+                agentName={existingAgent.name}
+                onTimeout={() => setMessage({ type: "error", text: "Session ended: 2.5 minute limit reached." })}
+              />
             </ConversationProvider>
           </div>
         </section>
@@ -695,7 +737,11 @@ export default function CreateNPC() {
 
           <div className="bg-surface-container-lowest rounded-2xl p-12 shadow-xl border border-outline-variant/10">
             <ConversationProvider>
-              <ConversationWidget agentId={existingAgent.agentId} agentName={existingAgent.name} />
+              <ConversationWidget
+                agentId={existingAgent.agentId}
+                agentName={existingAgent.name}
+                onTimeout={() => setMessage({ type: "error", text: "Session ended: 2.5 minute limit reached." })}
+              />
             </ConversationProvider>
           </div>
         </section>
