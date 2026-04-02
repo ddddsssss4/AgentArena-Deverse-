@@ -64,9 +64,6 @@
 		"ELEVENLABS_VOICE_ID": "21m00Tcm4TlvDq8ikWAM",
 		"SYSTEM_PROMPT": "You are a helpful AI developer NPC assisting a user in a 3D playground.",
 		"GOOGLE_CLIENT_ID": "826228158551-8vghpn3ibpelq7hlds19vbejvblfa91v.apps.googleusercontent.com",
-		"FRONTEND_URL": "https://deverse-server.saraswatdevesh98.workers.dev",
-		"CF_ACCOUNT_ID": "",
-		"CF_API_TOKEN": "",
-		"RTK_APP_ID": ""
+		"FRONTEND_URL": "https://deverse-server.saraswatdevesh98.workers.dev"
 	}
 }
