@@ -26,7 +26,7 @@ type IncomingMessage =
 export class ArenaRoomDurableObject extends DurableObject<Env> {
   private sessions: Map<WebSocket, PlayerState> = new Map();
 
-  constructor(ctx: DurableObjectState, env: Env) {
+  constructor(ctx: DurableObjectState, public env: Env) {
     super(ctx, env);
     // Restore any hibernated sessions
     this.ctx.getWebSockets().forEach((ws) => {
@@ -77,8 +77,8 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
           return Response.json({ error: "Failed to create RTK meeting", details: errText }, { status: createRes.status, headers: cors });
         }
         const createData = await createRes.json() as any;
-        // CF API wraps response in { result: { id, ... }, success: true }
-        meetingId = createData?.result?.id || createData?.result?.meeting_id || createData?.id;
+        // CF API wraps response in { data: { id, ... }, success: true }
+        meetingId = createData?.data?.id || createData?.result?.id || createData?.result?.meeting_id || createData?.id;
         if (!meetingId) {
           console.error("[RTK] No meeting ID in response:", JSON.stringify(createData));
           return Response.json({ error: "Invalid RTK meeting creation response", raw: createData }, { status: 500, headers: cors });
@@ -90,11 +90,14 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
       // ── Add the participant and return their auth token ──
       try {
         let participantName = "Developer";
+        let participantId = crypto.randomUUID();
         try {
           const bodyText = await request.text();
           if (bodyText) {
             const body = JSON.parse(bodyText);
             participantName = body.name || "Developer";
+            // Map the frontend's userId to custom_participant_id, fallback to random UUID
+            participantId = body.userId || crypto.randomUUID();
           }
         } catch { /* body is optional */ }
 
@@ -106,7 +109,11 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
               "Authorization": `Bearer ${this.env.CF_API_TOKEN}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ name: participantName }),
+            body: JSON.stringify({ 
+              name: participantName,
+              preset_name: "group_call_participant", 
+              custom_participant_id: participantId
+            }),
           }
         );
         if (!partRes.ok) {
@@ -116,8 +123,8 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
         }
         const partData = await partRes.json() as any;
         // Normalise: CF returns either authToken or auth_token depending on version
-        const result = partData?.result || partData;
-        const authToken = result?.authToken || result?.auth_token;
+        const result = partData?.data || partData?.result || partData;
+        const authToken = result?.authToken || result?.token || result?.auth_token;
         if (!authToken) {
           console.error("[RTK] No authToken in participant response:", JSON.stringify(partData));
           return Response.json({ error: "No authToken in response", raw: partData }, { status: 500, headers: cors });

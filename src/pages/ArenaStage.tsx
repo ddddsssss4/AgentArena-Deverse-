@@ -10,7 +10,8 @@ import { NPCCharacter } from "../components/arena/NPCCharacter";
 import { NPCChatModal } from "../components/arena/NPCChatModal";
 import { RoomChat } from "../components/arena/RoomChat";
 import { connectSocket, disconnectSocket, getSelfId } from "../lib/socket";
-import { connectToPeer, disconnectPeer } from "../lib/webrtc";
+import { useRealtimeKitClient, RealtimeKitProvider } from "@cloudflare/realtimekit-react";
+import { RtkParticipantsAudio } from "@cloudflare/realtimekit-react-ui";
 import { useArenaStore } from "../store/arenaStore";
 import { useAuthStore } from "../store/authStore";
 import { ShortcutsDialog } from "../components/common/ShortcutsDialog";
@@ -43,15 +44,34 @@ export default function ArenaStage() {
   const [nearbyNpc, setNearbyNpc] = useState<string | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Re-run WebRTC connections whenever a new player arrives/leaves
+  const [meeting, initMeeting] = useRealtimeKitClient();
+  const [rtkToken, setRtkToken] = useState("");
+
+  // Connect to Cloudflare RealtimeKit if user is logged in
   useEffect(() => {
-    if (!isPrivateRoom) return;
-    const playerIds = Object.keys(players);
-    playerIds.forEach((id) => connectToPeer(id));
-    return () => {
-      // Cleanup logic if needed
+    if (!user) return;
+    
+    let mounted = true;
+    const fetchToken = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || ""}/api/arenas/${roomId}/rtk-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: user.name, userId: user.id })
+        });
+        const data = (await res.json()) as any;
+        if (mounted && data.auth_token) {
+           await initMeeting({ authToken: data.auth_token });
+           setRtkToken(data.auth_token);
+        }
+      } catch (err) {
+        console.error("Failed to connect to Cloudflare RealtimeKit room:", err);
+      }
     };
-  }, [players, isPrivateRoom]);
+    
+    fetchToken();
+    return () => { mounted = false; };
+  }, [isPrivateRoom, user, roomId]);
 
   useEffect(() => {
     connectSocket(roomId);
@@ -151,14 +171,17 @@ export default function ArenaStage() {
         onClose={() => setIsShortcutsOpen(false)} 
       />
 
-      {/* Private Room Chat Overlay */}
-      {isPrivateRoom && user && (
-        <RoomChat 
-          selfName={user.name} 
-          selfColor={user.color} 
-          isNearbyPlayer={nearbyPlayer}
-          isNpcChatActive={!!activeNpcChat}
-        />
+      {/* Room Chat & Audio Overlay (Enabled for both Global & Private) */}
+      {user && (
+        <RealtimeKitProvider value={meeting}>
+          <RoomChat 
+            selfName={user.name} 
+            selfColor={user.color} 
+            isNearbyPlayer={nearbyPlayer}
+            isNpcChatActive={!!activeNpcChat}
+          />
+          {rtkToken && <RtkParticipantsAudio meeting={meeting} />}
+        </RealtimeKitProvider>
       )}
 
       {/* 3D Canvas */}

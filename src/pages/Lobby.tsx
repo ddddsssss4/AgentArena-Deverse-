@@ -15,8 +15,7 @@ export default function Lobby() {
               Shared 3D Workspaces with Emulated AI Engineers
             </h1>
             <p className="text-xl text-on-surface-variant max-w-2xl leading-relaxed mb-12">
-              Deverse is an open-source, edge-native multiplayer playground. It allows developers to collaborate in private WebRTC peer-to-peer rooms or interact with specialized AI agents trained via Retrieval-Augmented Generation (RAG).
-            </p>
+Deverse is a persistent 3D playground where developers collaborate with autonomous AI agents. Instead of chat windows, we’ve built a spatial world where you walk up to AI engineers  and talk to them naturally using your voice. It provides platform for developers around the corner so they can collaborate with their fellow developers and can build together.            </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/arena" className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-8 py-4 rounded-full font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
                 Enter Global Atrium
@@ -83,7 +82,7 @@ export default function Lobby() {
               <div className="w-12 h-12 rounded-lg bg-tertiary-fixed mb-6 flex items-center justify-center text-tertiary group-hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined">smart_toy</span>
               </div>
-              <h3 className="text-lg font-bold mb-3 font-headline">AI Inference & Speech (Open-Source LLMs & Whisper)</h3>
+              <h3 className="text-lg font-bold mb-3 font-headline">AI Inference & Speech (Eleven Labs)</h3>
               <p className="text-sm text-on-surface-variant leading-relaxed">Private, local-first inference pipelines for real-time agent verbal interaction.</p>
             </div>
             <div className="p-8 bg-surface-container-lowest rounded-xl hover:shadow-xl transition-all border border-transparent hover:border-outline-variant/10 group">
@@ -109,7 +108,7 @@ export default function Lobby() {
                   <span className="material-symbols-outlined text-periwinkle !text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
                 </div>
                 <h2 className="text-3xl font-bold mb-6 tracking-tight font-headline">Privacy Architecture: Verified</h2>
-                <p className="text-on-surface-variant leading-relaxed max-w-md mx-auto">
+                <p className="text-white leading-relaxed max-w-md mx-auto">
                   Engineered with physical segregation at the Edge. User secrets are cryptographically isolated within private enclaves, and multi-tenant RAG pipelines maintain absolute data sovereignty across all distributed nodes.
                 </p>
                 <div className="mt-10 flex items-center justify-center gap-2">
@@ -121,7 +120,7 @@ export default function Lobby() {
                       <span className="material-symbols-outlined text-[14px] text-blue-600 font-bold">lock</span>
                     </div>
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 ml-2">Zero-Knowledge Protocols Active</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-white ml-2">Zero-Knowledge Protocols Active</span>
                 </div>
               </div>
             </div>

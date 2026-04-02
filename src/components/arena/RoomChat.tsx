@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../store/chatStore";
 import { emitChat } from "../../lib/socket";
-import { enableVoice, disableVoice } from "../../lib/webrtc";
+import { useRealtimeKitMeeting } from "@cloudflare/realtimekit-react";
 
 interface RoomChatProps {
   selfName: string;
@@ -42,12 +42,17 @@ export function RoomChat({ selfName, selfColor, isNearbyPlayer, isNpcChatActive 
     setInput("");
   };
 
+  const { meeting } = useRealtimeKitMeeting();
+
   const toggleVoice = async () => {
-    if (voiceOn) {
-      disableVoice();
+    if (!meeting) return;
+    const isMicOn = voiceOn;
+    
+    if (isMicOn) {
+      await meeting.self.disableAudio();
       setVoiceOn(false);
     } else {
-      await enableVoice();
+      await meeting.self.enableAudio();
       setVoiceOn(true);
     }
   };

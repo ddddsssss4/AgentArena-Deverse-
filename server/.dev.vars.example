@@ -1,1 +1,4 @@
 ELEVENLABS_API_KEY=your_api_key_here
+CF_ACCOUNT_ID="your_account_id_here"
+CF_API_TOKEN="your_token_here"
+RTK_APP_ID="your_app_id_here"
