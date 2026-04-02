@@ -321,7 +321,7 @@ export default {
             },
             tts: {
               voice_id: body.voiceId,
-              model_id: "eleven_flash_v2_5",
+              model_id: "eleven_flash_v2",
             },
           },
         };
