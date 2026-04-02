@@ -36,11 +36,105 @@ export class ArenaRoomDurableObject extends DurableObject<Env> {
   }
 
   async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    // ── Handle Preflight for RTK Token endpoint ──
+    const cors = {
+      "Access-Control-Allow-Origin": this.env.FRONTEND_URL || "*",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    };
+
+    if (url.pathname.endsWith("/rtk-token") && request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
+
+    // ── Handle HTTP request for RTK Tokens ──
+    if (url.pathname.endsWith("/rtk-token") && request.method === "POST") {
+      if (!this.env.CF_ACCOUNT_ID || !this.env.CF_API_TOKEN || !this.env.RTK_APP_ID) {
+        console.error("[RTK] Missing secrets: CF_ACCOUNT_ID, CF_API_TOKEN, or RTK_APP_ID not set");
+        return Response.json({ error: "Missing RTK secrets" }, { status: 500, headers: cors });
+      }
+
+      // ── Get or create a persistent RealtimeKit meeting per room ──
+      let meetingId = await this.ctx.storage.get<string>("rtkMeetingId");
+      if (!meetingId) {
+        console.log("[RTK] Creating new meeting for room:", url.pathname);
+        const createRes = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${this.env.CF_ACCOUNT_ID}/realtime/kit/${this.env.RTK_APP_ID}/meetings`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${this.env.CF_API_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title: `Deverse-${url.pathname}` }),
+          }
+        );
+        if (!createRes.ok) {
+          const errText = await createRes.text();
+          console.error("[RTK] Meeting creation failed:", errText);
+          return Response.json({ error: "Failed to create RTK meeting", details: errText }, { status: createRes.status, headers: cors });
+        }
+        const createData = await createRes.json() as any;
+        // CF API wraps response in { result: { id, ... }, success: true }
+        meetingId = createData?.result?.id || createData?.result?.meeting_id || createData?.id;
+        if (!meetingId) {
+          console.error("[RTK] No meeting ID in response:", JSON.stringify(createData));
+          return Response.json({ error: "Invalid RTK meeting creation response", raw: createData }, { status: 500, headers: cors });
+        }
+        await this.ctx.storage.put("rtkMeetingId", meetingId);
+        console.log("[RTK] Meeting created:", meetingId);
+      }
+
+      // ── Add the participant and return their auth token ──
+      try {
+        let participantName = "Developer";
+        try {
+          const bodyText = await request.text();
+          if (bodyText) {
+            const body = JSON.parse(bodyText);
+            participantName = body.name || "Developer";
+          }
+        } catch { /* body is optional */ }
+
+        const partRes = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${this.env.CF_ACCOUNT_ID}/realtime/kit/${this.env.RTK_APP_ID}/meetings/${meetingId}/participants`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${this.env.CF_API_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: participantName }),
+          }
+        );
+        if (!partRes.ok) {
+          const errText = await partRes.text();
+          console.error("[RTK] Participant creation failed:", errText);
+          return Response.json({ error: "Failed to create RTK participant", details: errText }, { status: partRes.status, headers: cors });
+        }
+        const partData = await partRes.json() as any;
+        // Normalise: CF returns either authToken or auth_token depending on version
+        const result = partData?.result || partData;
+        const authToken = result?.authToken || result?.auth_token;
+        if (!authToken) {
+          console.error("[RTK] No authToken in participant response:", JSON.stringify(partData));
+          return Response.json({ error: "No authToken in response", raw: partData }, { status: 500, headers: cors });
+        }
+        console.log("[RTK] Participant created for:", participantName);
+        // Always return as auth_token so the frontend has a stable field name
+        return Response.json({ auth_token: authToken, meeting_id: meetingId }, { status: 200, headers: cors });
+      } catch (err) {
+        console.error("[RTK] Unexpected error:", err);
+        return Response.json({ error: "Internal error generating RTK token", details: String(err) }, { status: 500, headers: cors });
+      }
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected WebSocket upgrade", { status: 426 });
     }
 
-    const url = new URL(request.url);
     const playerName = url.searchParams.get("name") || "Developer";
     const playerColor = url.searchParams.get("color") || "#3b82f6";
     const playerId = crypto.randomUUID();

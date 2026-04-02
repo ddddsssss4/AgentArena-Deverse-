@@ -39,12 +39,25 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
-    // ── WebSocket: Arena Room ──────────────────────────────────────────────
+    // ── WebSocket & HTTP: Arena Room ─────────────────────────────────────────
     if (path.startsWith("/ws/arena/")) {
       const roomId = path.split("/ws/arena/")[1] || "global";
       const id = env.ARENA_ROOM.idFromName(roomId);
       const stub = env.ARENA_ROOM.get(id);
       return stub.fetch(request);
+    }
+
+    if (path.startsWith("/api/arenas/") && path.endsWith("/rtk-token") && request.method === "POST") {
+      const roomId = path.split("/api/arenas/")[1]?.split("/")[0] || "global";
+      const id = env.ARENA_ROOM.idFromName(roomId);
+      const stub = env.ARENA_ROOM.get(id);
+      // Buffer the body first — Cloudflare does NOT allow re-reading a consumed request stream
+      const bodyText = await request.text();
+      return stub.fetch(new Request(request.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: bodyText,
+      }));
     }
 
     // ── WebSocket: NPC Chat ────────────────────────────────────────────────
