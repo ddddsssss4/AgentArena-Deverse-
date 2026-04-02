@@ -61,7 +61,10 @@ export default function ArenaStage() {
         });
         const data = (await res.json()) as any;
         if (mounted && data.auth_token) {
-           await initMeeting({ authToken: data.auth_token });
+           const rtkMeeting = await initMeeting({ authToken: data.auth_token });
+           if (rtkMeeting) {
+             await rtkMeeting.join(); // Explicitly join the meeting to start receiving audio
+           }
            setRtkToken(data.auth_token);
         }
       } catch (err) {

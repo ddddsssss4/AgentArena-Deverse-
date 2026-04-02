@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../store/chatStore";
-import { emitChat } from "../../lib/socket";
+import { emitChat, emitTalk } from "../../lib/socket";
 import { useRealtimeKitMeeting } from "@cloudflare/realtimekit-react";
 
 interface RoomChatProps {
@@ -51,9 +51,11 @@ export function RoomChat({ selfName, selfColor, isNearbyPlayer, isNpcChatActive 
     if (isMicOn) {
       await meeting.self.disableAudio();
       setVoiceOn(false);
+      emitTalk(false); // Tell everyone my character stopped talking
     } else {
       await meeting.self.enableAudio();
       setVoiceOn(true);
+      emitTalk(true); // Tell everyone my character is now talking
     }
   };
 
@@ -71,21 +73,27 @@ export function RoomChat({ selfName, selfColor, isNearbyPlayer, isNpcChatActive 
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
               <span className="text-sm font-space font-bold text-on-surface tracking-tight">Room Sync</span>
             </div>
-            {/* Voice toggle */}
-            <button
-              onClick={toggleVoice}
-              title={voiceOn ? "Mute voice" : "Enable voice chat"}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold font-mono uppercase tracking-widest transition-all ${
-                voiceOn
-                  ? "bg-emerald-100/80 text-emerald-700 border border-emerald-200"
-                  : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container border border-transparent"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                {voiceOn ? "mic" : "mic_none"}
-              </span>
-              {voiceOn ? "Live" : "Voice"}
-            </button>
+            {/* Voice toggle — shows clear muted/live state */}
+            <div className="relative">
+              {/* Pulsing ring when mic is LIVE */}
+              {voiceOn && (
+                <span className="absolute inset-0 rounded-xl bg-emerald-400/30 animate-ping" />
+              )}
+              <button
+                onClick={toggleVoice}
+                title={voiceOn ? "Mute voice" : "Enable voice chat"}
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold font-mono uppercase tracking-widest transition-all ${
+                  voiceOn
+                    ? "bg-emerald-500 text-white border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                    : "bg-red-50 text-red-500 border border-red-200 hover:bg-red-100"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  {voiceOn ? "mic" : "mic_off"}
+                </span>
+                {voiceOn ? "Live" : "Muted"}
+              </button>
+            </div>
           </div>
 
           {/* Messages */}

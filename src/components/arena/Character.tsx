@@ -177,20 +177,49 @@ export const Character: React.FC<CharacterProps> = ({
         <meshPhysicalMaterial color={color} roughness={0.2} metalness={0.5} />
       </mesh>
       
-      {/* Floating Ring (Aura) */}
+      {/* Floating Ring (Aura) — glows brighter when talking */}
       <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.8, 0.05, 16, 32]} />
-        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.8} />
+        <meshBasicMaterial 
+          color={currentTalking ? "#10b981" : color} 
+          toneMapped={false} 
+          transparent 
+          opacity={currentTalking ? 1 : 0.8} 
+        />
       </mesh>
 
       {/* Point Light for the character */}
       <pointLight position={[0, 2, 0]} color={color} intensity={0.5} distance={5} />
 
-      {/* Status Indicators */}
+      {/* Talking Indicator — Premium audio wave bars */}
       {currentTalking && (
-        <Html position={[0, 2.8, 0]} center>
-          <div className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-bold text-blue-600 shadow-sm animate-pulse">
-            💬 Talking...
+        <Html position={[0, 2.9, 0]} center>
+          <div style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: "3px",
+            background: "rgba(16, 185, 129, 0.15)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(16, 185, 129, 0.4)",
+            borderRadius: "20px",
+            padding: "5px 10px",
+            boxShadow: "0 0 12px rgba(16,185,129,0.3)"
+          }}>
+            {[1, 1.6, 1, 1.8, 1.2].map((h, i) => (
+              <div key={i} style={{
+                width: "3px",
+                height: `${h * 8}px`,
+                background: "#10b981",
+                borderRadius: "2px",
+                animation: `waveBar 0.6s ease-in-out ${i * 0.1}s infinite alternate`,
+              }} />
+            ))}
+            <style>{`
+              @keyframes waveBar {
+                from { transform: scaleY(0.4); opacity: 0.7; }
+                to   { transform: scaleY(1.5); opacity: 1; }
+              }
+            `}</style>
           </div>
         </Html>
       )}
