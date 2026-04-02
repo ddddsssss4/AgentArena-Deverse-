@@ -1,7 +1,3 @@
-<div align="center">
-  <img width="1200" height="auto" alt="Deverse OS Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-  <p><h3>Engineered for Precision. Built for Collaboration.</h3></p>
-</div>
 
 ---
 
