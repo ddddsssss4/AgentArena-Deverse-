@@ -54,6 +54,7 @@ graph TD
 - **Proximity Chat:** Real-time, spatialized audio and text. As you walk toward a developer or an AI, their voice becomes audible.
 - **Persona Training (RAG):** A dedicated interface to inject project-specific context (API keys, docs, requirements) into AI agents via an encrypted vector store.
 - **Multi-modal Interaction:** Support for natural voice conversations (STT/TTS) and text-based commands.
+- **Consumption Safety (Token Guard):** Automatic 2.5-minute session timeout with real-time UI countdown to prevent unintended token drain.
 
 ---
 
@@ -71,9 +72,12 @@ We leverage the full Cloudflare suite to maintain the "low-latency promise":
 *   **R2 Storage:** Manages world snapshots and static assets.
 
 ### ElevenLabs AI Voice
-We used ElevenLabs to give the NPCs their "soul" and professional authority:
-*   **Text-to-Speech Streaming:** High-fidelity, low-latency audio streaming via the `/v1/text-to-speech/{voiceId}/stream` endpoint.
-*   **Model:** `eleven_flash_v2_5` — optimized for conversational speed.
+We used ElevenLabs to give the NPCs their "soul" and professional authority, integrating their latest Conversational AI (ConvAI) stack:
+*   **Conversational AI:** Managed through `@elevenlabs/react` SDK for low-latency, full-duplex voice interactions.
+*   **Instant Voice Cloning (IVC):** `/v1/voices/add` for dynamic persona creation.
+*   **Knowledge Base (RAG):** `/v1/convai/knowledge-base/text` for project-specific grounding.
+*   **Agent Management:** `/v1/convai/agents/create` for orchestrating the NPC lifecycle.
+*   **Model:** `eleven_flash_v2` — optimized for ultra-low latency conversational speed.
 *   **Custom Payloads:** Stability and Clarity overrides to differentiate personas (e.g., Aria is expressive, Kai is calm and authoritative).
 
 ---
