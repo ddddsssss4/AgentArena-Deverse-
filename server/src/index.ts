@@ -331,7 +331,7 @@ export default {
           const config = agentConfig.conversation_config as Record<string, unknown>;
           const agent = config.agent as Record<string, unknown>;
           const prompt = agent.prompt as Record<string, unknown>;
-          prompt.knowledge_base = [{ type: "document", id: knowledgeDocId, usage_mode: "auto" }];
+          prompt.knowledge_base = [{ type: "file", name: `${body.name} Knowledge`, id: knowledgeDocId }];
           prompt.rag = {
             enabled: true,
             embedding_model: "e5_mistral_7b_instruct",
