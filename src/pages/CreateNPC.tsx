@@ -204,7 +204,10 @@ export default function CreateNPC() {
         }),
       });
 
-      if (!res.ok) throw new Error("Agent creation failed");
+      if (!res.ok) {
+        const errData = await res.json() as { details?: string; error?: string };
+        throw new Error(errData.details || errData.error || "Agent creation failed");
+      }
 
       const data = (await res.json()) as { agentId: string };
       setExistingAgent({
